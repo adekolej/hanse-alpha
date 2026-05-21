@@ -1,0 +1,11 @@
+venv_model/
+bin/
+lib/
+include/
+share/
+pyvenv.cfg
+__pycache__/
+*.pyc
+.env
+.DS_Store
+
