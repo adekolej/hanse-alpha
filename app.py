@@ -1,43 +1,212 @@
 import streamlit as st
 import yfinance as yf
-import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from dicts import sectors
 
 st.set_page_config(page_title="Hanse Alpha", layout="wide")
 st.title("HANSE ALPHA")
 
+# ── INDICATOR HELPERS ────────────────────────────────────────────────────────
+
+def calc_sma(s, w):
+    return s.rolling(w).mean()
+
+def calc_ema(s, span):
+    return s.ewm(span=span, adjust=False).mean()
+
+def calc_bollinger(s, w=20, k=2):
+    mid = calc_sma(s, w)
+    std = s.rolling(w).std()
+    return mid, mid + k * std, mid - k * std
+
+def calc_rsi(s, p=14):
+    d = s.diff()
+    gain = d.clip(lower=0).ewm(com=p - 1, min_periods=p).mean()
+    loss = (-d.clip(upper=0)).ewm(com=p - 1, min_periods=p).mean()
+    return 100 - 100 / (1 + gain / loss)
+
+def calc_macd(s, fast=12, slow=26, sig=9):
+    macd = calc_ema(s, fast) - calc_ema(s, slow)
+    signal = calc_ema(macd, sig)
+    return macd, signal, macd - signal
+
+# ── LAYOUT ───────────────────────────────────────────────────────────────────
+
 mode = st.sidebar.radio("Mode", ["Stocks", "Sectors"])
 
-# ── STOCKS ──────────────────────────────────────────────────────────────────
+# ── STOCKS ───────────────────────────────────────────────────────────────────
 if mode == "Stocks":
     ticker = st.sidebar.text_input("Ticker Symbol").strip().upper()
 
     if ticker:
         dat = yf.Ticker(ticker)
         st.header(ticker)
-        tab_hist, tab_cal, tab_targets, tab_income = st.tabs(
-            ["Price History", "Calendar", "Price Targets", "Quarterly Income"]
+        tab_chart, tab_macro, tab_cal, tab_targets, tab_income = st.tabs(
+            ["Chart", "Macro Overlay", "Calendar", "Price Targets", "Quarterly Income"]
         )
 
-        with tab_hist:
+        with tab_chart:
             period = st.selectbox(
                 "Timeframe",
-                ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"],
-                index=5,
+                ["1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "max"],
+                index=3,
             )
+            indicators = st.multiselect(
+                "Overlay Indicators",
+                ["SMA 20", "SMA 50", "SMA 200", "EMA 20", "EMA 50", "Bollinger Bands"],
+                default=["SMA 50"],
+            )
+            col1, col2 = st.columns(2)
+            show_rsi = col1.checkbox("Show RSI (14)")
+            show_macd = col2.checkbox("Show MACD (12/26/9)")
+
             with st.spinner("Loading..."):
                 data = dat.history(period=period)
+
             if data.empty:
-                st.warning("No price data returned for this ticker/timeframe.")
+                st.warning("No price data returned.")
             else:
-                st.dataframe(data, use_container_width=True)
-                if st.checkbox("Show Close Price Chart"):
-                    fig, ax = plt.subplots(figsize=(10, 4))
-                    ax.plot(data.index, data["Close"], color="steelblue")
-                    ax.set_ylabel("Close Price")
-                    ax.grid(True, linestyle="--", alpha=0.5)
-                    st.pyplot(fig)
+                close = data["Close"]
+
+                n_subplots = 1 + int(show_rsi) + int(show_macd)
+                row_heights = [0.6] + [0.2] * (n_subplots - 1)
+                subplot_titles = [ticker] + (["RSI"] if show_rsi else []) + (["MACD"] if show_macd else [])
+
+                fig = make_subplots(
+                    rows=n_subplots, cols=1, shared_xaxes=True,
+                    row_heights=row_heights, subplot_titles=subplot_titles,
+                    vertical_spacing=0.04,
+                )
+
+                # Candlestick
+                fig.add_trace(go.Candlestick(
+                    x=data.index, open=data["Open"], high=data["High"],
+                    low=data["Low"], close=close, name="Price",
+                    increasing_line_color="#26a69a", decreasing_line_color="#ef5350",
+                ), row=1, col=1)
+
+                # Overlay indicators
+                ind_colors = {
+                    "SMA 20": "orange", "SMA 50": "royalblue", "SMA 200": "mediumpurple",
+                    "EMA 20": "cyan", "EMA 50": "magenta",
+                }
+                for ind in indicators:
+                    if ind.startswith("SMA"):
+                        w = int(ind.split()[1])
+                        fig.add_trace(go.Scatter(
+                            x=data.index, y=calc_sma(close, w),
+                            name=ind, line=dict(color=ind_colors[ind], width=1.2),
+                        ), row=1, col=1)
+                    elif ind.startswith("EMA"):
+                        span = int(ind.split()[1])
+                        fig.add_trace(go.Scatter(
+                            x=data.index, y=calc_ema(close, span),
+                            name=ind, line=dict(color=ind_colors[ind], width=1.2),
+                        ), row=1, col=1)
+                    elif ind == "Bollinger Bands":
+                        mid, upper, lower = calc_bollinger(close)
+                        fig.add_trace(go.Scatter(
+                            x=data.index, y=upper, name="BB Upper",
+                            line=dict(color="gray", dash="dash", width=1),
+                        ), row=1, col=1)
+                        fig.add_trace(go.Scatter(
+                            x=data.index, y=lower, name="BB Lower",
+                            line=dict(color="gray", dash="dash", width=1),
+                            fill="tonexty", fillcolor="rgba(128,128,128,0.08)",
+                        ), row=1, col=1)
+                        fig.add_trace(go.Scatter(
+                            x=data.index, y=mid, name="BB Mid",
+                            line=dict(color="gray", width=1),
+                        ), row=1, col=1)
+
+                current_row = 2
+                if show_rsi:
+                    rsi = calc_rsi(close)
+                    fig.add_trace(go.Scatter(
+                        x=data.index, y=rsi, name="RSI",
+                        line=dict(color="orange", width=1.2),
+                    ), row=current_row, col=1)
+                    fig.add_hline(y=70, line_dash="dash", line_color="red",
+                                  annotation_text="70", row=current_row, col=1)
+                    fig.add_hline(y=30, line_dash="dash", line_color="green",
+                                  annotation_text="30", row=current_row, col=1)
+                    current_row += 1
+
+                if show_macd:
+                    macd, signal, hist = calc_macd(close)
+                    bar_colors = ["#26a69a" if v >= 0 else "#ef5350" for v in hist]
+                    fig.add_trace(go.Bar(
+                        x=data.index, y=hist, name="Histogram",
+                        marker_color=bar_colors, opacity=0.6,
+                    ), row=current_row, col=1)
+                    fig.add_trace(go.Scatter(
+                        x=data.index, y=macd, name="MACD",
+                        line=dict(color="royalblue", width=1.2),
+                    ), row=current_row, col=1)
+                    fig.add_trace(go.Scatter(
+                        x=data.index, y=signal, name="Signal",
+                        line=dict(color="orange", width=1.2),
+                    ), row=current_row, col=1)
+
+                fig.update_layout(
+                    height=300 + 180 * n_subplots,
+                    xaxis_rangeslider_visible=False,
+                    legend=dict(orientation="h", yanchor="bottom", y=1.01),
+                    margin=dict(l=0, r=0, t=40, b=0),
+                    template="plotly_dark",
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+        with tab_macro:
+            period_m = st.selectbox(
+                "Timeframe",
+                ["1y", "2y", "5y", "10y", "max"],
+                index=2,
+                key="macro_period",
+            )
+            with st.spinner("Loading..."):
+                price_data = dat.history(period=period_m)
+                macro = pd.read_csv(
+                    "BOGMBASE.csv",
+                    parse_dates=["observation_date"],
+                    index_col="observation_date",
+                )
+
+            if price_data.empty:
+                st.warning("No price data available.")
+            else:
+                macro = macro[macro.index >= price_data.index.min()]
+
+                fig_m = make_subplots(specs=[[{"secondary_y": True}]])
+                fig_m.add_trace(
+                    go.Scatter(
+                        x=price_data.index, y=price_data["Close"],
+                        name=ticker, line=dict(color="steelblue", width=1.5),
+                    ),
+                    secondary_y=False,
+                )
+                fig_m.add_trace(
+                    go.Scatter(
+                        x=macro.index, y=macro["BOGMBASE"],
+                        name="Fed Monetary Base",
+                        line=dict(color="orange", dash="dot", width=1.5),
+                    ),
+                    secondary_y=True,
+                )
+                fig_m.update_layout(
+                    height=500,
+                    xaxis_rangeslider_visible=False,
+                    legend=dict(orientation="h", y=1.02),
+                    margin=dict(l=0, r=0, t=40, b=0),
+                    template="plotly_dark",
+                )
+                fig_m.update_yaxes(title_text=f"{ticker} Price (USD)", secondary_y=False)
+                fig_m.update_yaxes(title_text="Monetary Base (Billions USD)", secondary_y=True)
+                st.plotly_chart(fig_m, use_container_width=True)
+                st.caption("Source: Federal Reserve Bank of St. Louis (FRED) — BOGMBASE")
 
         with tab_cal:
             try:
@@ -76,7 +245,7 @@ if mode == "Stocks":
                 except Exception as e:
                     st.error(f"Could not load income statement: {e}")
 
-# ── SECTORS ─────────────────────────────────────────────────────────────────
+# ── SECTORS ───────────────────────────────────────────────────────────────────
 elif mode == "Sectors":
     sector_name = st.sidebar.selectbox("Sector", list(sectors.keys()))
     action = st.sidebar.radio(
