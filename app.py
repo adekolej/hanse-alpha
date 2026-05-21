@@ -5,9 +5,19 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from datetime import datetime
+from requests_cache import CachedSession
+from requests_ratelimiter import LimiterMixin
 from dicts import sectors
 
 st.set_page_config(page_title="Hanse Alpha", layout="wide")
+
+# ── RATE-LIMITED CACHED SESSION FOR YFINANCE ──────────────────────────────────
+# Combines HTTP-level caching (5 min TTL) with rate limiting (2 req/s max)
+# to avoid Yahoo Finance rate-limit / IP-block errors on cloud deployments.
+class _CachedLimiterSession(LimiterMixin, CachedSession):
+    pass
+
+_yf_session = _CachedLimiterSession(per_second=2, expire_after=300)
 
 # ── SESSION STATE ─────────────────────────────────────────────────────────────
 if "watchlist" not in st.session_state:
@@ -16,15 +26,15 @@ if "watchlist" not in st.session_state:
 # ── CACHED DATA FETCHERS ──────────────────────────────────────────────────────
 @st.cache_data(ttl=300)
 def get_info(ticker):
-    return yf.Ticker(ticker).info
+    return yf.Ticker(ticker, session=_yf_session).info
 
 @st.cache_data(ttl=300)
 def get_history(ticker, period):
-    return yf.Ticker(ticker).history(period=period)
+    return yf.Ticker(ticker, session=_yf_session).history(period=period)
 
 @st.cache_data(ttl=600)
 def get_news(ticker):
-    return yf.Ticker(ticker).news
+    return yf.Ticker(ticker, session=_yf_session).news
 
 @st.cache_data(ttl=3600)
 def load_macro():
@@ -374,7 +384,7 @@ if mode == "Stocks":
         # ── CALENDAR ──────────────────────────────────────────────────────────
         with tab_cal:
             try:
-                cal = yf.Ticker(ticker).calendar
+                cal = yf.Ticker(ticker, session=_yf_session).calendar
                 if cal is not None and not pd.DataFrame([cal]).empty:
                     st.dataframe(pd.DataFrame([cal]), use_container_width=True)
                 else:
@@ -385,7 +395,7 @@ if mode == "Stocks":
         # ── PRICE TARGETS ─────────────────────────────────────────────────────
         with tab_targets:
             try:
-                targets  = yf.Ticker(ticker).analyst_price_targets
+                targets  = yf.Ticker(ticker, session=_yf_session).analyst_price_targets
                 df_t     = pd.DataFrame(targets) if not isinstance(targets, pd.DataFrame) else targets
                 if df_t is not None and not df_t.empty:
                     st.dataframe(df_t, use_container_width=True)
@@ -398,7 +408,7 @@ if mode == "Stocks":
         with tab_income:
             with st.spinner("Loading..."):
                 try:
-                    income = yf.Ticker(ticker).quarterly_income_stmt
+                    income = yf.Ticker(ticker, session=_yf_session).quarterly_income_stmt
                     if income is not None and not income.empty:
                         formatted = income.copy()
                         for col in formatted.columns:
@@ -435,7 +445,7 @@ elif mode == "Watchlist":
             rows = []
             for t in st.session_state.watchlist:
                 try:
-                    inf   = get_info(t)
+                    inf = get_info(t)
                     price = inf.get("currentPrice") or inf.get("regularMarketPrice")
                     prev  = inf.get("previousClose")
                     chg   = (price - prev) / prev * 100 if price and prev else None
@@ -477,7 +487,7 @@ elif mode == "Sectors":
     st.title(sector_name.replace("-", " ").title())
     with st.spinner("Loading..."):
         try:
-            sec    = yf.Sector(sector_name)
+            sec    = yf.Sector(sector_name, session=_yf_session)
             result = getattr(sec, action)
             if isinstance(result, pd.DataFrame):
                 st.dataframe(result, use_container_width=True)
