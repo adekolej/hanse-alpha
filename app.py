@@ -178,7 +178,7 @@ if mode == "Stocks":
             if price_data.empty:
                 st.warning("No price data available.")
             else:
-                macro = macro[macro.index >= price_data.index.min()]
+                macro = macro[macro.index >= price_data.index.min().tz_localize(None)]
 
                 fig_m = make_subplots(specs=[[{"secondary_y": True}]])
                 fig_m.add_trace(
