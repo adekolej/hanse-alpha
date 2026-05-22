@@ -63,6 +63,25 @@ def get_price_targets(ticker):
 def get_income_stmt(ticker):
     return yf.Ticker(ticker).quarterly_income_stmt
 
+@st.cache_data(ttl=900)
+def get_sector_data(sector_name, action):
+    """Fetch a single sector attribute. Returns a (kind, value) tuple so the
+    yfinance.Ticker object case can be flattened to its symbol string before
+    Streamlit tries to cache it (raw Ticker objects don't serialise)."""
+    sec    = yf.Sector(sector_name)
+    result = getattr(sec, action, None)
+    if result is None:
+        return ("none", None)
+    if isinstance(result, pd.DataFrame):
+        return ("dataframe", result)
+    if isinstance(result, dict):
+        return ("dict", result)
+    if isinstance(result, list):
+        return ("list", result)
+    if hasattr(result, "ticker"):                # yfinance.Ticker object
+        return ("ticker", result.ticker)
+    return ("scalar", result)
+
 @st.cache_data(ttl=3600)
 def load_macro():
     return pd.read_csv(
@@ -541,39 +560,53 @@ elif mode == "Sectors":
         ["key", "name", "symbol", "ticker", "overview", "top_companies", "research_reports"],
     )
 
-    st.title(sector_name.replace("-", " ").title())
+    # Header + refresh button
+    hcol, rcol = st.columns([5, 1])
+    hcol.title(sector_name.replace("-", " ").title())
+    if rcol.button("Refresh Data", key="sector_refresh"):
+        st.cache_data.clear()
+        st.rerun()
+
     with st.spinner("Loading..."):
         try:
-            sec    = yf.Sector(sector_name)
-            result = getattr(sec, action)
-
-            if isinstance(result, pd.DataFrame):
-                # top_companies → plain table
-                st.dataframe(result, use_container_width=True)
-
-            elif isinstance(result, dict):
-                # overview → vertical key/value table (scalar values)
-                st.dataframe(pd.Series(result).to_frame("Value"), use_container_width=True)
-
-            elif isinstance(result, list):
-                # research_reports → list of dicts → table
-                if result and isinstance(result[0], dict):
-                    cols = ["reportDate", "headHtml", "provider", "investmentRating",
-                            "targetPrice", "targetPriceStatus"]
-                    df_rr = pd.DataFrame(result)
-                    display_cols = [c for c in cols if c in df_rr.columns]
-                    st.dataframe(df_rr[display_cols] if display_cols else df_rr,
-                                 use_container_width=True)
-                else:
-                    st.write(result)
-
-            elif hasattr(result, "ticker"):
-                # ticker → yfinance.Ticker object; just show the symbol string
-                st.write(result.ticker)
-
-            else:
-                # key / name / symbol → plain strings
-                st.write(result)
-
+            kind, value = get_sector_data(sector_name, action)
         except Exception as e:
-            st.error(f"Could not load sector data: {e}")
+            kind, value = "error", str(e)
+
+    if kind == "none" or value is None:
+        st.warning(
+            f"No data returned for **{action}**. Yahoo Finance may be rate-limiting "
+            "this request. Click **Refresh Data** to try again."
+        )
+
+    elif kind == "error":
+        st.error(f"Could not load sector data: {value}")
+
+    elif kind == "dataframe":
+        st.dataframe(value, use_container_width=True)
+
+    elif kind == "dict":
+        # overview etc. — render as vertical key/value table
+        st.dataframe(pd.Series(value).to_frame("Value"), use_container_width=True)
+
+    elif kind == "list":
+        # research_reports → list of dicts → table
+        if value and isinstance(value[0], dict):
+            cols = ["reportDate", "headHtml", "provider", "investmentRating",
+                    "targetPrice", "targetPriceStatus"]
+            df_rr = pd.DataFrame(value)
+            display_cols = [c for c in cols if c in df_rr.columns]
+            st.dataframe(df_rr[display_cols] if display_cols else df_rr,
+                         use_container_width=True)
+        else:
+            st.write(value)
+
+    elif kind == "ticker":
+        # The yfinance.Sector.ticker attribute → underlying index symbol
+        st.subheader("Index Symbol")
+        st.code(value)
+
+    else:
+        # key / name / symbol → plain strings
+        st.subheader(action.replace("_", " ").title())
+        st.write(value)
