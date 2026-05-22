@@ -546,16 +546,34 @@ elif mode == "Sectors":
         try:
             sec    = yf.Sector(sector_name)
             result = getattr(sec, action)
+
             if isinstance(result, pd.DataFrame):
+                # top_companies → plain table
                 st.dataframe(result, use_container_width=True)
+
             elif isinstance(result, dict):
-                try:
-                    # Try wide DataFrame first (works when values are lists/arrays)
-                    st.dataframe(pd.DataFrame(result), use_container_width=True)
-                except ValueError:
-                    # Scalar-value dicts — render as vertical key/value table
-                    st.dataframe(pd.Series(result).to_frame("Value"), use_container_width=True)
+                # overview → vertical key/value table (scalar values)
+                st.dataframe(pd.Series(result).to_frame("Value"), use_container_width=True)
+
+            elif isinstance(result, list):
+                # research_reports → list of dicts → table
+                if result and isinstance(result[0], dict):
+                    cols = ["reportDate", "headHtml", "provider", "investmentRating",
+                            "targetPrice", "targetPriceStatus"]
+                    df_rr = pd.DataFrame(result)
+                    display_cols = [c for c in cols if c in df_rr.columns]
+                    st.dataframe(df_rr[display_cols] if display_cols else df_rr,
+                                 use_container_width=True)
+                else:
+                    st.write(result)
+
+            elif hasattr(result, "ticker"):
+                # ticker → yfinance.Ticker object; just show the symbol string
+                st.write(result.ticker)
+
             else:
+                # key / name / symbol → plain strings
                 st.write(result)
+
         except Exception as e:
             st.error(f"Could not load sector data: {e}")
