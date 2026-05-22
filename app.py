@@ -1,3 +1,5 @@
+import time
+import random
 import streamlit as st
 import yfinance as yf
 import pandas as pd
@@ -9,78 +11,124 @@ from dicts import sectors
 
 st.set_page_config(page_title="Hanse Alpha", layout="wide")
 
+# ── RETRY HELPER ──────────────────────────────────────────────────────────────
+# Keywords that indicate a transient / rate-limit error worth retrying.
+_RETRYABLE = (
+    "rate limit", "429", "too many requests",
+    "connection", "timeout", "ssl", "remote end closed",
+    "read timed out", "failed to establish",
+)
+
+def _is_rate_limited(exc: Exception) -> bool:
+    msg = str(exc).lower()
+    return any(k in msg for k in _RETRYABLE)
+
+def _yf_call(fn, retries: int = 3, base_delay: float = 2.0):
+    """Call fn() with exponential back-off on transient / rate-limit errors.
+
+    Usage:
+        result = _yf_call(lambda: yf.Ticker(ticker).fast_info)
+
+    If all retries fail with a rate-limit error the last exception is re-raised
+    so st.cache_data does NOT cache the failure, allowing the next user
+    interaction to try again.
+    """
+    last_exc: Exception | None = None
+    for attempt in range(retries):
+        try:
+            return fn()
+        except Exception as exc:
+            last_exc = exc
+            if attempt < retries - 1 and _is_rate_limited(exc):
+                jitter = random.uniform(0.0, 0.5)
+                time.sleep(base_delay * (2 ** attempt) + jitter)
+            else:
+                raise          # non-retryable or last attempt → propagate
+    raise last_exc             # should be unreachable, but satisfies type-checkers
+
 # ── SESSION STATE ─────────────────────────────────────────────────────────────
 if "watchlist" not in st.session_state:
     st.session_state.watchlist = []
 
 # ── CACHED DATA FETCHERS ──────────────────────────────────────────────────────
-# fast_info uses a lightweight ticker endpoint — far less likely to be
-# rate-limited on cloud IPs than the full quote-summary used by .info.
+# Every fetcher wraps its yfinance call in _yf_call() so transient rate-limit
+# or connection errors are retried up to 3 times with exponential back-off
+# before surfacing to the UI.  TTLs are set aggressively long for data that
+# barely changes intraday (calendar, income, price targets) to minimise the
+# total number of outbound requests from Streamlit Cloud.
+
+# fast_info → lightweight endpoint, separate from quote-summary.
 @st.cache_data(ttl=300)
 def get_fast_info(ticker):
-    fi = yf.Ticker(ticker).fast_info
-    return {
-        "last_price":          getattr(fi, "last_price", None),
-        "previous_close":      getattr(fi, "previous_close", None),
-        "market_cap":          getattr(fi, "market_cap", None),
-        "fifty_two_week_high": getattr(fi, "fifty_two_week_high", None),
-        "fifty_two_week_low":  getattr(fi, "fifty_two_week_low", None),
-        "exchange":            getattr(fi, "exchange", None),
-        "currency":            getattr(fi, "currency", "USD"),
-    }
+    def _fetch():
+        fi = yf.Ticker(ticker).fast_info
+        return {
+            "last_price":          getattr(fi, "last_price", None),
+            "previous_close":      getattr(fi, "previous_close", None),
+            "market_cap":          getattr(fi, "market_cap", None),
+            "fifty_two_week_high": getattr(fi, "fifty_two_week_high", None),
+            "fifty_two_week_low":  getattr(fi, "fifty_two_week_low", None),
+            "exchange":            getattr(fi, "exchange", None),
+            "currency":            getattr(fi, "currency", "USD"),
+        }
+    return _yf_call(_fetch)
 
-# Full .info — only used for Fundamentals; may fail on rate-limited IPs.
-@st.cache_data(ttl=300)
+# Full .info — used for Fundamentals; heavier endpoint, more likely throttled.
+@st.cache_data(ttl=600)
 def get_info(ticker):
-    return yf.Ticker(ticker).info
+    return _yf_call(lambda: yf.Ticker(ticker).info)
 
-# yf.download() hits Yahoo's chart API, a separate endpoint to quote-summary.
+# yf.download() hits Yahoo's chart API — a separate endpoint to quote-summary.
 @st.cache_data(ttl=300)
 def get_history(ticker, period):
-    data = yf.download(ticker, period=period, progress=False, auto_adjust=True)
-    # yfinance 1.x returns a (Price, Ticker) MultiIndex even for single tickers.
-    # Drop the ticker level so data["Close"] is a plain Series, not a DataFrame.
-    if isinstance(data.columns, pd.MultiIndex):
-        data.columns = data.columns.get_level_values(0)
-    # Ensure index is timezone-naive for consistent comparisons
-    if hasattr(data.index, "tz") and data.index.tz is not None:
-        data.index = data.index.tz_localize(None)
-    return data
+    def _fetch():
+        data = yf.download(ticker, period=period, progress=False, auto_adjust=True)
+        # yfinance 1.x returns a (Price, Ticker) MultiIndex even for single tickers.
+        if isinstance(data.columns, pd.MultiIndex):
+            data.columns = data.columns.get_level_values(0)
+        # Ensure tz-naive index for consistent date comparisons.
+        if hasattr(data.index, "tz") and data.index.tz is not None:
+            data.index = data.index.tz_localize(None)
+        return data
+    return _yf_call(_fetch)
 
 @st.cache_data(ttl=600)
 def get_news(ticker):
-    return yf.Ticker(ticker).news
+    return _yf_call(lambda: yf.Ticker(ticker).news)
 
-@st.cache_data(ttl=900)
+# Calendar, income, price targets change at most once a quarter — cache 1 hour.
+@st.cache_data(ttl=3600)
 def get_calendar(ticker):
-    return yf.Ticker(ticker).calendar
+    return _yf_call(lambda: yf.Ticker(ticker).calendar)
 
-@st.cache_data(ttl=900)
+@st.cache_data(ttl=3600)
 def get_price_targets(ticker):
-    return yf.Ticker(ticker).analyst_price_targets
+    return _yf_call(lambda: yf.Ticker(ticker).analyst_price_targets)
 
-@st.cache_data(ttl=900)
+@st.cache_data(ttl=3600)
 def get_income_stmt(ticker):
-    return yf.Ticker(ticker).quarterly_income_stmt
+    return _yf_call(lambda: yf.Ticker(ticker).quarterly_income_stmt)
 
-@st.cache_data(ttl=900)
+@st.cache_data(ttl=1800)
 def get_sector_data(sector_name, action):
     """Fetch a single sector attribute. Returns a (kind, value) tuple so the
     yfinance.Ticker object case can be flattened to its symbol string before
     Streamlit tries to cache it (raw Ticker objects don't serialise)."""
-    sec    = yf.Sector(sector_name)
-    result = getattr(sec, action, None)
-    if result is None:
-        return ("none", None)
-    if isinstance(result, pd.DataFrame):
-        return ("dataframe", result)
-    if isinstance(result, dict):
-        return ("dict", result)
-    if isinstance(result, list):
-        return ("list", result)
-    if hasattr(result, "ticker"):                # yfinance.Ticker object
-        return ("ticker", result.ticker)
-    return ("scalar", result)
+    def _fetch():
+        sec    = yf.Sector(sector_name)
+        result = getattr(sec, action, None)
+        if result is None:
+            return ("none", None)
+        if isinstance(result, pd.DataFrame):
+            return ("dataframe", result)
+        if isinstance(result, dict):
+            return ("dict", result)
+        if isinstance(result, list):
+            return ("list", result)
+        if hasattr(result, "ticker"):            # yfinance.Ticker object
+            return ("ticker", result.ticker)
+        return ("scalar", result)
+    return _yf_call(_fetch)
 
 @st.cache_data(ttl=3600)
 def load_macro():
@@ -337,8 +385,9 @@ if mode == "Stocks":
         with tab_fund:
             if not info:
                 st.warning(
-                    "Fundamental data is temporarily unavailable — Yahoo Finance "
-                    "rate-limited this request. Click **Refresh Data** to try again."
+                    "⚠️ Fundamental data is temporarily unavailable — Yahoo Finance "
+                    "rate-limited this request (it has already been retried 3×). "
+                    "Wait a minute then click **Refresh Data**."
                 )
                 st.stop()
             col_a, col_b = st.columns(2)
@@ -523,7 +572,11 @@ elif mode == "Watchlist":
     else:
         with st.spinner("Fetching data..."):
             rows = []
-            for t in st.session_state.watchlist:
+            for i, t in enumerate(st.session_state.watchlist):
+                # Small stagger between requests so Yahoo doesn't see a burst
+                # from a single IP — 0.3 s per ticker, skipped for the first.
+                if i > 0:
+                    time.sleep(0.3)
                 try:
                     fi    = get_fast_info(t)
                     price = fi.get("last_price")
@@ -537,8 +590,9 @@ elif mode == "Watchlist":
                         "52W High":    f"${fi.get('fifty_two_week_high'):.2f}" if fi.get("fifty_two_week_high") else "N/A",
                         "52W Low":     f"${fi.get('fifty_two_week_low'):.2f}" if fi.get("fifty_two_week_low") else "N/A",
                     })
-                except Exception:
-                    rows.append({"Ticker": t, "Price": "N/A", "Change (1D)": "N/A",
+                except Exception as exc:
+                    label = "rate limited — click Refresh" if _is_rate_limited(exc) else "N/A"
+                    rows.append({"Ticker": t, "Price": label, "Change (1D)": "N/A",
                                  "Market Cap": "N/A", "52W High": "N/A", "52W Low": "N/A"})
 
         st.dataframe(pd.DataFrame(rows).set_index("Ticker"), use_container_width=True)
@@ -575,8 +629,9 @@ elif mode == "Sectors":
 
     if kind == "none" or value is None:
         st.warning(
-            f"No data returned for **{action}**. Yahoo Finance may be rate-limiting "
-            "this request. Click **Refresh Data** to try again."
+            f"⚠️ No data returned for **{action}** — Yahoo Finance may be "
+            "rate-limiting this request (it has already been retried 3×). "
+            "Wait a minute then click **Refresh Data**."
         )
 
     elif kind == "error":
