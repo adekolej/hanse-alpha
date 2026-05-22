@@ -14,15 +14,33 @@ if "watchlist" not in st.session_state:
     st.session_state.watchlist = []
 
 # ── CACHED DATA FETCHERS ──────────────────────────────────────────────────────
-# st.cache_data caches the returned Python objects so repeated tab switches
-# and reloads don't hit Yahoo Finance again within the TTL window.
+# fast_info uses a lightweight ticker endpoint — far less likely to be
+# rate-limited on cloud IPs than the full quote-summary used by .info.
+@st.cache_data(ttl=300)
+def get_fast_info(ticker):
+    fi = yf.Ticker(ticker).fast_info
+    return {
+        "last_price":          getattr(fi, "last_price", None),
+        "previous_close":      getattr(fi, "previous_close", None),
+        "market_cap":          getattr(fi, "market_cap", None),
+        "fifty_two_week_high": getattr(fi, "fifty_two_week_high", None),
+        "fifty_two_week_low":  getattr(fi, "fifty_two_week_low", None),
+        "exchange":            getattr(fi, "exchange", None),
+        "currency":            getattr(fi, "currency", "USD"),
+    }
+
+# Full .info — only used for Fundamentals; may fail on rate-limited IPs.
 @st.cache_data(ttl=300)
 def get_info(ticker):
     return yf.Ticker(ticker).info
 
+# yf.download() hits Yahoo's chart API, a separate endpoint to quote-summary.
 @st.cache_data(ttl=300)
 def get_history(ticker, period):
-    return yf.Ticker(ticker).history(period=period)
+    data = yf.download(ticker, period=period, progress=False, auto_adjust=True)
+    if isinstance(data.columns, pd.MultiIndex):   # flatten if multi-ticker shape
+        data.columns = data.columns.get_level_values(0)
+    return data
 
 @st.cache_data(ttl=600)
 def get_news(ticker):
@@ -102,23 +120,39 @@ if mode == "Stocks":
             "fundamentals, news, and macro data."
         )
     else:
+        # ── fast_info: lightweight, reliable on cloud IPs ─────────────────────
         with st.spinner(f"Loading {ticker}..."):
-            info = get_info(ticker)
+            fi = get_fast_info(ticker)
 
-        name     = info.get("longName") or ticker
-        price    = info.get("currentPrice") or info.get("regularMarketPrice")
-        prev     = info.get("previousClose")
+        price    = fi.get("last_price")
+        prev     = fi.get("previous_close")
         change   = (price - prev) / prev * 100 if price and prev else None
-        mkt_cap  = info.get("marketCap")
-        w52h     = info.get("fiftyTwoWeekHigh")
-        w52l     = info.get("fiftyTwoWeekLow")
-        pe       = info.get("trailingPE")
-        exchange = info.get("exchange", "")
-        sector_s = info.get("sector", "")
-        industry = info.get("industry", "")
+        mkt_cap  = fi.get("market_cap")
+        w52h     = fi.get("fifty_two_week_high")
+        w52l     = fi.get("fifty_two_week_low")
+        exchange = fi.get("exchange", "")
+
+        # Try full .info for name/sector/P/E — fall back silently if blocked
+        try:
+            info     = get_info(ticker)
+            name     = info.get("longName") or ticker
+            sector_s = info.get("sector", "")
+            industry = info.get("industry", "")
+            pe       = info.get("trailingPE")
+        except Exception:
+            info     = {}
+            name     = ticker
+            sector_s = ""
+            industry = ""
+            pe       = None
 
         # ── Company header ────────────────────────────────────────────────────
-        st.title(name)
+        hcol, rcol = st.columns([5, 1])
+        hcol.title(name)
+        if rcol.button("Refresh Data"):
+            st.cache_data.clear()
+            st.rerun()
+
         meta_parts = [p for p in [exchange, sector_s, industry] if p]
         if meta_parts:
             st.caption("  •  ".join(meta_parts))
@@ -265,6 +299,12 @@ if mode == "Stocks":
 
         # ── FUNDAMENTALS ──────────────────────────────────────────────────────
         with tab_fund:
+            if not info:
+                st.warning(
+                    "Fundamental data is temporarily unavailable — Yahoo Finance "
+                    "rate-limited this request. Click **Refresh Data** to try again."
+                )
+                st.stop()
             col_a, col_b = st.columns(2)
 
             with col_a:
@@ -349,7 +389,10 @@ if mode == "Stocks":
             if price_data.empty:
                 st.warning("No price data available.")
             else:
-                macro  = macro[macro.index >= price_data.index.min().tz_localize(None)]
+                min_date = price_data.index.min()
+                if hasattr(min_date, "tz_localize") and min_date.tzinfo is not None:
+                    min_date = min_date.tz_localize(None)
+                macro = macro[macro.index >= min_date]
                 fig_m  = make_subplots(specs=[[{"secondary_y": True}]])
                 fig_m.add_trace(
                     go.Scatter(x=price_data.index, y=price_data["Close"],
@@ -437,25 +480,21 @@ elif mode == "Watchlist":
             rows = []
             for t in st.session_state.watchlist:
                 try:
-                    inf = get_info(t)
-                    price = inf.get("currentPrice") or inf.get("regularMarketPrice")
-                    prev  = inf.get("previousClose")
+                    fi    = get_fast_info(t)
+                    price = fi.get("last_price")
+                    prev  = fi.get("previous_close")
                     chg   = (price - prev) / prev * 100 if price and prev else None
                     rows.append({
                         "Ticker":      t,
-                        "Company":     inf.get("shortName", t),
                         "Price":       f"${price:,.2f}" if price else "N/A",
                         "Change (1D)": f"{chg:+.2f}%" if chg is not None else "N/A",
-                        "Market Cap":  large(inf.get("marketCap")),
-                        "P/E":         fmt(inf.get("trailingPE"), ".1f") if inf.get("trailingPE") else "N/A",
-                        "52W High":    f"${inf.get('fiftyTwoWeekHigh'):.2f}" if inf.get("fiftyTwoWeekHigh") else "N/A",
-                        "52W Low":     f"${inf.get('fiftyTwoWeekLow'):.2f}" if inf.get("fiftyTwoWeekLow") else "N/A",
+                        "Market Cap":  large(fi.get("market_cap")),
+                        "52W High":    f"${fi.get('fifty_two_week_high'):.2f}" if fi.get("fifty_two_week_high") else "N/A",
+                        "52W Low":     f"${fi.get('fifty_two_week_low'):.2f}" if fi.get("fifty_two_week_low") else "N/A",
                     })
                 except Exception:
-                    rows.append({"Ticker": t, "Company": "Error loading data",
-                                 "Price": "N/A", "Change (1D)": "N/A",
-                                 "Market Cap": "N/A", "P/E": "N/A",
-                                 "52W High": "N/A", "52W Low": "N/A"})
+                    rows.append({"Ticker": t, "Price": "N/A", "Change (1D)": "N/A",
+                                 "Market Cap": "N/A", "52W High": "N/A", "52W Low": "N/A"})
 
         st.dataframe(pd.DataFrame(rows).set_index("Ticker"), use_container_width=True)
 
