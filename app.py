@@ -38,13 +38,30 @@ def get_info(ticker):
 @st.cache_data(ttl=300)
 def get_history(ticker, period):
     data = yf.download(ticker, period=period, progress=False, auto_adjust=True)
-    if isinstance(data.columns, pd.MultiIndex):   # flatten if multi-ticker shape
+    # yfinance 1.x returns a (Price, Ticker) MultiIndex even for single tickers.
+    # Drop the ticker level so data["Close"] is a plain Series, not a DataFrame.
+    if isinstance(data.columns, pd.MultiIndex):
         data.columns = data.columns.get_level_values(0)
+    # Ensure index is timezone-naive for consistent comparisons
+    if hasattr(data.index, "tz") and data.index.tz is not None:
+        data.index = data.index.tz_localize(None)
     return data
 
 @st.cache_data(ttl=600)
 def get_news(ticker):
     return yf.Ticker(ticker).news
+
+@st.cache_data(ttl=900)
+def get_calendar(ticker):
+    return yf.Ticker(ticker).calendar
+
+@st.cache_data(ttl=900)
+def get_price_targets(ticker):
+    return yf.Ticker(ticker).analyst_price_targets
+
+@st.cache_data(ttl=900)
+def get_income_stmt(ticker):
+    return yf.Ticker(ticker).quarterly_income_stmt
 
 @st.cache_data(ttl=3600)
 def load_macro():
@@ -363,11 +380,16 @@ if mode == "Stocks":
                     news_items = get_news(ticker)
                     if news_items:
                         for item in news_items[:12]:
-                            title     = item.get("title", "No title")
-                            link      = item.get("link") or item.get("url", "#")
-                            publisher = item.get("publisher", "")
-                            ts        = item.get("providerPublishTime")
-                            date_str  = datetime.fromtimestamp(ts).strftime("%b %d, %Y") if ts else ""
+                            # yfinance >= 1.x nests everything under item['content']
+                            c         = item.get("content") or item  # fallback for older shape
+                            title     = c.get("title", "No title")
+                            link      = (
+                                (c.get("canonicalUrl") or c.get("clickThroughUrl") or {}).get("url")
+                                or c.get("link") or "#"
+                            )
+                            publisher = (c.get("provider") or {}).get("displayName") or c.get("publisher", "")
+                            pub_date  = c.get("pubDate") or ""
+                            date_str  = pub_date[:10] if pub_date else ""   # "2026-05-21T14:07:08Z" → "2026-05-21"
 
                             with st.container(border=True):
                                 st.markdown(f"**[{title}]({link})**")
@@ -389,10 +411,7 @@ if mode == "Stocks":
             if price_data.empty:
                 st.warning("No price data available.")
             else:
-                min_date = price_data.index.min()
-                if hasattr(min_date, "tz_localize") and min_date.tzinfo is not None:
-                    min_date = min_date.tz_localize(None)
-                macro = macro[macro.index >= min_date]
+                macro = macro[macro.index >= price_data.index.min()]
                 fig_m  = make_subplots(specs=[[{"secondary_y": True}]])
                 fig_m.add_trace(
                     go.Scatter(x=price_data.index, y=price_data["Close"],
@@ -419,9 +438,11 @@ if mode == "Stocks":
         # ── CALENDAR ──────────────────────────────────────────────────────────
         with tab_cal:
             try:
-                cal = yf.Ticker(ticker).calendar
-                if cal is not None and not pd.DataFrame([cal]).empty:
-                    st.dataframe(pd.DataFrame([cal]), use_container_width=True)
+                cal = get_calendar(ticker)
+                if cal:
+                    # Convert to a vertical Series → clean single-column table
+                    df_cal = pd.Series({k: str(v) for k, v in cal.items()}).to_frame("Value")
+                    st.dataframe(df_cal, use_container_width=True)
                 else:
                     st.info("No calendar data available.")
             except Exception as e:
@@ -430,9 +451,14 @@ if mode == "Stocks":
         # ── PRICE TARGETS ─────────────────────────────────────────────────────
         with tab_targets:
             try:
-                targets  = yf.Ticker(ticker).analyst_price_targets
-                df_t     = pd.DataFrame(targets) if not isinstance(targets, pd.DataFrame) else targets
-                if df_t is not None and not df_t.empty:
+                targets = get_price_targets(ticker)
+                if targets:
+                    if isinstance(targets, pd.DataFrame):
+                        df_t = targets
+                    elif isinstance(targets, dict):
+                        df_t = pd.Series(targets).to_frame("Value")
+                    else:
+                        df_t = pd.DataFrame(targets)
                     st.dataframe(df_t, use_container_width=True)
                 else:
                     st.info("No analyst price targets available.")
@@ -443,7 +469,7 @@ if mode == "Stocks":
         with tab_income:
             with st.spinner("Loading..."):
                 try:
-                    income = yf.Ticker(ticker).quarterly_income_stmt
+                    income = get_income_stmt(ticker)
                     if income is not None and not income.empty:
                         formatted = income.copy()
                         for col in formatted.columns:
@@ -523,7 +549,12 @@ elif mode == "Sectors":
             if isinstance(result, pd.DataFrame):
                 st.dataframe(result, use_container_width=True)
             elif isinstance(result, dict):
-                st.dataframe(pd.DataFrame(result), use_container_width=True)
+                try:
+                    # Try wide DataFrame first (works when values are lists/arrays)
+                    st.dataframe(pd.DataFrame(result), use_container_width=True)
+                except ValueError:
+                    # Scalar-value dicts — render as vertical key/value table
+                    st.dataframe(pd.Series(result).to_frame("Value"), use_container_width=True)
             else:
                 st.write(result)
         except Exception as e:
