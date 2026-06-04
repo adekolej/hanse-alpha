@@ -268,6 +268,28 @@ def large(val):
     except (TypeError, ValueError):
         return "N/A"
 
+# Sector palette for the Supply-Chain sub-supplier nodes (Tier-2/3/4).
+SECTOR_COLORS = {
+    "Semiconductors":       "#5b8ff9",
+    "Semi Equipment":       "#5ad8a6",
+    "EDA Software":         "#5d7092",
+    "Electronic Materials": "#f6bd16",
+    "Specialty Chemicals":  "#945fb9",
+    "Industrial Gases":     "#6dc8ec",
+    "Mining & Refining":    "#ff9845",
+    "Metals & Alloys":      "#e8684a",
+    "Battery Materials":    "#269a99",
+    "Optics & Lasers":      "#ff99c3",
+    "Composite Materials":  "#9270ca",
+    "Aerospace Components": "#a0d911",
+}
+_SECTOR_FALLBACK = "#888888"
+
+def _hex_rgba(hex_color, alpha):
+    h = hex_color.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return f"rgba({r},{g},{b},{alpha})"
+
 # ── SIDEBAR ───────────────────────────────────────────────────────────────────
 st.sidebar.title("Hanse Alpha")
 mode = st.sidebar.radio(
@@ -989,72 +1011,165 @@ elif mode == "Supply Chain":
     )
     suppliers = [s for s in suppliers if s["criticality"] >= min_crit]
 
+    # Sub-supplier tiers (2→4). Each entry's "supplies" lists names in the tier
+    # directly toward the company. Visibility cascades inward from the
+    # (criticality-filtered) Tier-1, so hidden parents drop their children too.
+    tier_data = {
+        "Tier-2": chain.get("tier2", []),
+        "Tier-3": chain.get("tier3", []),
+        "Tier-4": chain.get("tier4", []),
+    }
+    has_subtiers = any(tier_data.values())
+    include_sub  = st.sidebar.checkbox(
+        "Show sub-supplier tiers (2–4)", value=True, disabled=not has_subtiers
+    )
+
+    def _filter_tier(entries, allowed):
+        out = []
+        for e in entries:
+            targets = [n for n in e["supplies"] if n in allowed]
+            if targets:
+                out.append({**e, "targets": targets})
+        return out
+
+    tier2 = tier3 = tier4 = []
+    if include_sub and has_subtiers:
+        tier2 = _filter_tier(tier_data["Tier-2"], {s["name"] for s in suppliers})
+        tier3 = _filter_tier(tier_data["Tier-3"], {e["name"] for e in tier2})
+        tier4 = _filter_tier(tier_data["Tier-4"], {e["name"] for e in tier3})
+    subtiers = [("Tier-2", tier2), ("Tier-3", tier3), ("Tier-4", tier4)]
+    all_sub  = tier2 + tier3 + tier4
+
     st.caption(
         "Relationships are **curated** from public supplier lists and filings "
-        "(illustrative, not exhaustive). Market data is live via Yahoo Finance."
+        "(illustrative — Tier-3/4 especially). Market data is live via Yahoo Finance."
     )
 
     if not suppliers:
         st.info("No suppliers match the selected criticality filter.")
         st.stop()
 
-    # ── SANKEY: Supplier → Category → Company ─────────────────────────────────
     categories = sorted({s["category"] for s in suppliers})
-    sup_names  = [s["name"] for s in suppliers]
 
-    # Node index layout: suppliers, then categories, then the company.
-    node_labels, node_colors = [], []
-    for s in suppliers:
-        node_labels.append(s["name"])
-        node_colors.append(crit_color[s["criticality"]])
-    cat_base = len(suppliers)
-    for c in categories:
-        node_labels.append(c)
-        node_colors.append("#4a6fa5")
-    company_idx = len(node_labels)
-    node_labels.append(company)
-    node_colors.append("#26a69a")
+    if all_sub:
+        # ── SANKEY: Tier-4 → Tier-3 → Tier-2 → Tier-1 → Company ───────────────
+        # Sub-supplier nodes coloured by SECTOR; Tier-1 by criticality.
+        node_labels, node_colors = [], []
+        groups    = [("Tier-4", tier4), ("Tier-3", tier3), ("Tier-2", tier2)]
+        group_idx = []                       # name→node-index, one dict per group
+        for _, grp in groups:
+            idx = {}
+            for e in grp:
+                idx[e["name"]] = len(node_labels)
+                node_labels.append(e["name"])
+                node_colors.append(SECTOR_COLORS.get(e["sector"], _SECTOR_FALLBACK))
+            group_idx.append(idx)
+        t1_idx = {}
+        for s in suppliers:
+            t1_idx[s["name"]] = len(node_labels)
+            node_labels.append(s["name"])
+            node_colors.append(crit_color[s["criticality"]])
+        company_idx = len(node_labels)
+        node_labels.append(company)
+        node_colors.append("#26a69a")
 
-    cat_idx = {c: cat_base + i for i, c in enumerate(categories)}
+        # each group supplies INTO the next group rightward: T4→T3, T3→T2, T2→T1
+        right_maps = [group_idx[1], group_idx[2], t1_idx]
+        src, tgt, val, link_color = [], [], [], []
+        for gi, (_, grp) in enumerate(groups):
+            rmap = right_maps[gi]
+            for e in grp:
+                lc = _hex_rgba(SECTOR_COLORS.get(e["sector"], _SECTOR_FALLBACK), 0.35)
+                for name in e["targets"]:
+                    if name in rmap:
+                        src.append(group_idx[gi][e["name"]])
+                        tgt.append(rmap[name]); val.append(1); link_color.append(lc)
+        for s in suppliers:
+            src.append(t1_idx[s["name"]]); tgt.append(company_idx)
+            val.append(s["criticality"]); link_color.append("rgba(38,166,154,0.25)")
 
-    src, tgt, val, link_color = [], [], [], []
-    cat_totals = {c: 0 for c in categories}
-    for i, s in enumerate(suppliers):
-        w = s["criticality"]
-        src.append(i)
-        tgt.append(cat_idx[s["category"]])
-        val.append(w)
-        link_color.append("rgba(240,160,32,0.25)")
-        cat_totals[s["category"]] += w
-    for c in categories:
-        src.append(cat_idx[c])
-        tgt.append(company_idx)
-        val.append(cat_totals[c])
-        link_color.append("rgba(38,166,154,0.25)")
+        height = 170 + 22 * max(len(tier4), len(tier3), len(tier2), len(suppliers))
+        caption = ("Left→right: **Tier-4 → Tier-3 → Tier-2 → Tier-1 → Company**. "
+                   "Sub-supplier nodes are coloured by **sector** (legend above); "
+                   "Tier-1 by criticality (🔴 critical · 🟠 important · ⚪ secondary).")
+
+        # Sector legend (HTML swatches) rendered above the chart.
+        present = sorted({e["sector"] for e in all_sub})
+        legend  = "  ".join(
+            f'<span style="display:inline-block;width:11px;height:11px;'
+            f'background:{SECTOR_COLORS.get(s, _SECTOR_FALLBACK)};border-radius:2px;'
+            f'margin:0 4px -1px 0"></span>{s}'
+            for s in present
+        )
+        st.markdown("**Sector legend** &nbsp; " + legend, unsafe_allow_html=True)
+    else:
+        # ── SANKEY: Tier-1 → Category → Company (sub-tiers hidden) ─────────────
+        node_labels, node_colors = [], []
+        for s in suppliers:
+            node_labels.append(s["name"])
+            node_colors.append(crit_color[s["criticality"]])
+        cat_base = len(suppliers)
+        for c in categories:
+            node_labels.append(c)
+            node_colors.append("#4a6fa5")
+        company_idx = len(node_labels)
+        node_labels.append(company)
+        node_colors.append("#26a69a")
+
+        cat_idx = {c: cat_base + i for i, c in enumerate(categories)}
+        src, tgt, val, link_color = [], [], [], []
+        cat_totals = {c: 0 for c in categories}
+        for i, s in enumerate(suppliers):
+            src.append(i); tgt.append(cat_idx[s["category"]]); val.append(s["criticality"])
+            link_color.append("rgba(240,160,32,0.25)")
+            cat_totals[s["category"]] += s["criticality"]
+        for c in categories:
+            src.append(cat_idx[c]); tgt.append(company_idx); val.append(cat_totals[c])
+            link_color.append("rgba(38,166,154,0.25)")
+
+        height = 130 + 26 * len(suppliers)
+        caption = ("Flow width ∝ supplier criticality. "
+                   "Node colour: 🔴 critical · 🟠 important · ⚪ secondary.")
 
     sankey = go.Figure(go.Sankey(
         arrangement="snap",
         node=dict(
             label=node_labels, color=node_colors,
-            pad=14, thickness=16,
+            pad=12, thickness=15,
             line=dict(color="rgba(0,0,0,0)", width=0),
         ),
         link=dict(source=src, target=tgt, value=val, color=link_color),
     ))
     sankey.update_layout(
-        height=130 + 26 * len(suppliers),
+        height=height,
         margin=dict(l=0, r=0, t=10, b=0),
         template="plotly_dark",
-        font=dict(size=12),
+        font=dict(size=11),
     )
     st.plotly_chart(sankey, use_container_width=True)
-    st.caption("Flow width ∝ supplier criticality. "
-               "Node colour: 🔴 critical · 🟠 important · ⚪ secondary.")
+    st.caption(caption)
 
-    # ── SUPPLIER TABLE (+ optional live quotes) ───────────────────────────────
-    st.markdown("### Suppliers")
-    rows = []
-    for i, s in enumerate(suppliers):
+    # Live-quote helper (cached + rate-limit aware); sleep is the caller's job.
+    def live_cols(ticker):
+        try:
+            fi    = get_fast_info(ticker)
+            price = fi.get("last_price")
+            prev  = fi.get("previous_close")
+            chg   = (price - prev) / prev * 100 if price and prev else None
+            ccy   = fi.get("currency", "")
+            return {
+                "Price":       f"{price:,.2f} {ccy}".strip() if price else "N/A",
+                "Change (1D)": f"{chg:+.2f}%" if chg is not None else "N/A",
+                "Market Cap":  large(fi.get("market_cap")) if fi.get("market_cap") else "N/A",
+            }
+        except Exception as exc:
+            label = "rate limited" if _is_rate_limited(exc) else "N/A"
+            return {"Price": label, "Change (1D)": "N/A", "Market Cap": "N/A"}
+
+    # ── TIER-1 SUPPLIER TABLE (+ optional live quotes) ────────────────────────
+    st.markdown("### Tier-1 suppliers")
+    rows, _n = [], 0
+    for s in suppliers:
         row = {
             "Supplier":    s["name"],
             "Ticker":      s["ticker"] or "—",
@@ -1064,43 +1179,74 @@ elif mode == "Supply Chain":
             "Criticality": crit_label[s["criticality"]],
         }
         if show_live and s["ticker"]:
-            if i > 0:
+            if _n > 0:
                 time.sleep(0.2)   # stagger requests (same pattern as Watchlist)
-            try:
-                fi    = get_fast_info(s["ticker"])
-                price = fi.get("last_price")
-                prev  = fi.get("previous_close")
-                chg   = (price - prev) / prev * 100 if price and prev else None
-                ccy   = fi.get("currency", "")
-                row["Price"]      = f"{price:,.2f} {ccy}".strip() if price else "N/A"
-                row["Change (1D)"] = f"{chg:+.2f}%" if chg is not None else "N/A"
-                row["Market Cap"]  = large(fi.get("market_cap")) if fi.get("market_cap") else "N/A"
-            except Exception as exc:
-                label = "rate limited" if _is_rate_limited(exc) else "N/A"
-                row["Price"], row["Change (1D)"], row["Market Cap"] = label, "N/A", "N/A"
+            _n += 1
+            row.update(live_cols(s["ticker"]))
         elif show_live:
             row["Price"], row["Change (1D)"], row["Market Cap"] = "private", "—", "—"
         rows.append(row)
+    st.dataframe(pd.DataFrame(rows).set_index("Supplier"), use_container_width=True)
 
-    df_sc = pd.DataFrame(rows).set_index("Supplier")
-    st.dataframe(df_sc, use_container_width=True)
+    # ── SUB-SUPPLIER TABLE (Tiers 2–4, with sector) ───────────────────────────
+    if all_sub:
+        st.markdown("### Sub-suppliers (Tiers 2–4)")
+        sub_rows = []
+        for tlabel, grp in subtiers:
+            for t in grp:
+                row = {
+                    "Sub-supplier": t["name"],
+                    "Tier":         tlabel,
+                    "Sector":       t["sector"],
+                    "Ticker":       t["ticker"] or "—",
+                    "Country":      t["country"],
+                    "Role":         t["role"],
+                    "Supplies":     ", ".join(t["targets"]),
+                    "# served":     len(t["targets"]),
+                }
+                if show_live and t["ticker"]:
+                    if _n > 0:
+                        time.sleep(0.15)
+                    _n += 1
+                    row.update(live_cols(t["ticker"]))
+                elif show_live:
+                    row["Price"], row["Change (1D)"], row["Market Cap"] = "private", "—", "—"
+                sub_rows.append(row)
+        st.dataframe(pd.DataFrame(sub_rows).set_index("Sub-supplier"),
+                     use_container_width=True)
+        st.caption("**Sector** drives the node colour in the diagram. **# served** ≥ 2 "
+                   "marks a convergence point — a sub-supplier several firms in the "
+                   "tier above depend on.")
 
     # ── SUMMARY METRICS ───────────────────────────────────────────────────────
     st.markdown("### Concentration")
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Suppliers", len(suppliers))
-    m2.metric("Categories", len(categories))
-    n_critical = sum(1 for s in suppliers if s["criticality"] == 3)
-    m3.metric("Critical (Tier-1)", n_critical)
-    n_countries = len({s["country"] for s in suppliers})
-    m4.metric("Countries", n_countries)
+    m1, m2, m3, m4, m5 = st.columns(5)
+    m1.metric("Tier-1 suppliers", len(suppliers))
+    m2.metric("Sub-suppliers (T2–4)", len(all_sub))
+    n_conv = sum(1 for t in all_sub if len(t["targets"]) >= 2)
+    m3.metric("Convergence points", n_conv)
+    n_sectors = len({t["sector"] for t in all_sub})
+    m4.metric("Sectors", n_sectors)
+    n_countries = len({s["country"] for s in suppliers} | {t["country"] for t in all_sub})
+    m5.metric("Countries", n_countries)
 
-    # Geographic concentration table
+    # Geographic concentration table (all tiers)
     geo = (
-        pd.Series([s["country"] for s in suppliers])
+        pd.Series([s["country"] for s in suppliers] + [t["country"] for t in all_sub])
         .value_counts()
         .rename_axis("Country")
         .to_frame("Suppliers")
     )
-    st.markdown("**Geographic exposure**")
+    st.markdown("**Geographic exposure** (all tiers)")
     st.dataframe(geo, use_container_width=True)
+
+    # Sector concentration table (sub-suppliers)
+    if all_sub:
+        sec = (
+            pd.Series([t["sector"] for t in all_sub])
+            .value_counts()
+            .rename_axis("Sector")
+            .to_frame("Sub-suppliers")
+        )
+        st.markdown("**Sector exposure** (Tiers 2–4)")
+        st.dataframe(sec, use_container_width=True)

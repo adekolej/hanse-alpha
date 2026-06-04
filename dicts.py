@@ -242,6 +242,29 @@ supply_chains = {
             {"name": "Texas Instruments",   "ticker": "TXN",       "category": "Audio & Analog",            "country": "USA",         "role": "Analog / power management",              "criticality": 1},
             {"name": "LG Display",          "ticker": "LPL",       "category": "Displays & Memory",         "country": "South Korea", "role": "OLED panels",                            "criticality": 2},
         ],
+        # Deeper tiers: each "supplies" lists names in the tier directly toward
+        # the company (tier2→Tier-1, tier3→tier2, tier4→tier3). "sector" drives
+        # node colouring. Tier-3/4 are increasingly illustrative.
+        "tier2": [
+            {"name": "ASML",                "ticker": "ASML",   "sector": "Semi Equipment",      "country": "Netherlands", "role": "EUV/DUV lithography systems",     "supplies": ["TSMC", "Samsung Electronics", "Micron"]},
+            {"name": "Applied Materials",   "ticker": "AMAT",   "sector": "Semi Equipment",      "country": "USA",         "role": "Deposition / etch equipment",     "supplies": ["TSMC", "Samsung Electronics", "Micron"]},
+            {"name": "Lam Research",        "ticker": "LRCX",   "sector": "Semi Equipment",      "country": "USA",         "role": "Etch / deposition equipment",     "supplies": ["TSMC", "Samsung Electronics", "Micron"]},
+            {"name": "Shin-Etsu Chemical",  "ticker": "4063.T", "sector": "Electronic Materials","country": "Japan",       "role": "Silicon wafers / photoresist",    "supplies": ["TSMC", "Samsung Electronics", "Micron"]},
+            {"name": "Synopsys",            "ticker": "SNPS",   "sector": "EDA Software",        "country": "USA",         "role": "EDA design tools",                "supplies": ["Qualcomm", "Broadcom", "Skyworks", "Qorvo"]},
+            {"name": "Cadence",             "ticker": "CDNS",   "sector": "EDA Software",        "country": "USA",         "role": "EDA design tools",                "supplies": ["Qualcomm", "Broadcom", "Cirrus Logic"]},
+            {"name": "Arm Holdings",        "ticker": "ARM",    "sector": "EDA Software",        "country": "UK",          "role": "CPU IP cores (licensing)",        "supplies": ["Qualcomm", "Broadcom"]},
+        ],
+        "tier3": [
+            {"name": "Carl Zeiss SMT",      "ticker": None,     "sector": "Optics & Lasers",     "country": "Germany",     "role": "EUV projection optics",           "supplies": ["ASML"]},
+            {"name": "TRUMPF",              "ticker": None,     "sector": "Optics & Lasers",     "country": "Germany",     "role": "EUV CO2 drive lasers",            "supplies": ["ASML"]},
+            {"name": "MKS Instruments",     "ticker": "MKSI",   "sector": "Semi Equipment",      "country": "USA",         "role": "Vacuum / photonics subsystems",   "supplies": ["ASML", "Applied Materials", "Lam Research"]},
+            {"name": "Entegris",            "ticker": "ENTG",   "sector": "Electronic Materials","country": "USA",         "role": "Filtration / specialty materials","supplies": ["Applied Materials", "Lam Research", "Shin-Etsu Chemical"]},
+        ],
+        "tier4": [
+            {"name": "Linde",               "ticker": "LIN",    "sector": "Industrial Gases",    "country": "Ireland",     "role": "Specialty / electronic gases",    "supplies": ["MKS Instruments", "Entegris"]},
+            {"name": "Air Liquide",         "ticker": "AI.PA",  "sector": "Industrial Gases",    "country": "France",      "role": "Ultra-pure gases (neon, etc.)",   "supplies": ["MKS Instruments", "Entegris"]},
+            {"name": "Lynas Rare Earths",   "ticker": "LYC.AX", "sector": "Mining & Refining",   "country": "Australia",   "role": "Rare-earth elements for optics",  "supplies": ["Carl Zeiss SMT", "TRUMPF"]},
+        ],
     },
     "Tesla (TSLA)": {
         "ticker": "TSLA",
@@ -259,6 +282,24 @@ supply_chains = {
             {"name": "Magna International",  "ticker": "MGA",       "category": "Components & Wiring",        "country": "Canada",      "role": "Body / drivetrain components",           "criticality": 2},
             {"name": "Glencore",            "ticker": "GLNCY",     "category": "Raw Materials",             "country": "Switzerland", "role": "Cobalt / nickel",                        "criticality": 2},
             {"name": "Robert Bosch",        "ticker": None,        "category": "Components & Wiring",        "country": "Germany",     "role": "Sensors / braking (private)",            "criticality": 1},
+        ],
+        "tier2": [
+            {"name": "Wolfspeed",           "ticker": "WOLF",    "sector": "Semiconductors",      "country": "USA",         "role": "Silicon-carbide (SiC) wafers",    "supplies": ["STMicroelectronics", "Infineon", "ON Semiconductor"]},
+            {"name": "ASML",                "ticker": "ASML",    "sector": "Semi Equipment",      "country": "Netherlands", "role": "Lithography systems",             "supplies": ["STMicroelectronics", "Infineon", "NXP Semiconductors"]},
+            {"name": "TSMC",                "ticker": "TSM",     "sector": "Semiconductors",      "country": "Taiwan",      "role": "Foundry (auto-grade chips)",      "supplies": ["NXP Semiconductors", "STMicroelectronics", "Nvidia"]},
+            {"name": "Ganfeng Lithium",     "ticker": "1772.HK", "sector": "Mining & Refining",   "country": "China",       "role": "Lithium compounds",               "supplies": ["CATL", "LG Energy Solution", "Panasonic"]},
+            {"name": "Umicore",             "ticker": "UMICY",   "sector": "Battery Materials",   "country": "Belgium",     "role": "Cathode active materials",        "supplies": ["CATL", "LG Energy Solution"]},
+        ],
+        "tier3": [
+            {"name": "Coherent",            "ticker": "COHR",    "sector": "Optics & Lasers",     "country": "USA",         "role": "SiC substrate & laser tech",      "supplies": ["Wolfspeed"]},
+            {"name": "MKS Instruments",     "ticker": "MKSI",    "sector": "Semi Equipment",      "country": "USA",         "role": "Process subsystems",              "supplies": ["ASML", "TSMC"]},
+            {"name": "Entegris",            "ticker": "ENTG",    "sector": "Electronic Materials","country": "USA",         "role": "Filtration / specialty materials","supplies": ["ASML", "TSMC"]},
+            {"name": "Pilbara Minerals",    "ticker": "PLS.AX",  "sector": "Mining & Refining",   "country": "Australia",   "role": "Spodumene (lithium ore)",         "supplies": ["Ganfeng Lithium"]},
+            {"name": "SQM",                 "ticker": "SQM",     "sector": "Mining & Refining",   "country": "Chile",       "role": "Lithium brine / specialty",       "supplies": ["Ganfeng Lithium", "Umicore"]},
+        ],
+        "tier4": [
+            {"name": "Linde",               "ticker": "LIN",     "sector": "Industrial Gases",    "country": "Ireland",     "role": "Specialty gases",                 "supplies": ["Coherent", "MKS Instruments", "Entegris"]},
+            {"name": "Lynas Rare Earths",   "ticker": "LYC.AX",  "sector": "Mining & Refining",   "country": "Australia",   "role": "Rare-earth elements",             "supplies": ["Coherent"]},
         ],
     },
     "Boeing (BA)": {
@@ -278,6 +319,22 @@ supply_chains = {
             {"name": "Moog",                "ticker": "MOG-A",     "category": "Avionics & Systems",        "country": "USA",         "role": "Flight-control actuation",               "criticality": 2},
             {"name": "L3Harris",            "ticker": "LHX",       "category": "Avionics & Systems",        "country": "USA",         "role": "Avionics / comms",                       "criticality": 1},
         ],
+        "tier2": [
+            {"name": "ATI Inc.",            "ticker": "ATI",     "sector": "Metals & Alloys",     "country": "USA",         "role": "Titanium / nickel superalloys",   "supplies": ["GE Aerospace", "RTX (Pratt & Whitney)", "Safran", "Rolls-Royce", "Howmet Aerospace"]},
+            {"name": "Carpenter Technology","ticker": "CRS",     "sector": "Metals & Alloys",     "country": "USA",         "role": "Specialty alloys",                "supplies": ["GE Aerospace", "RTX (Pratt & Whitney)", "Howmet Aerospace"]},
+            {"name": "Woodward",            "ticker": "WWD",     "sector": "Aerospace Components", "country": "USA",         "role": "Fuel systems / engine controls", "supplies": ["GE Aerospace", "RTX (Pratt & Whitney)", "Rolls-Royce"]},
+            {"name": "Precision Castparts", "ticker": None,      "sector": "Metals & Alloys",     "country": "USA",         "role": "Investment castings (private)",   "supplies": ["GE Aerospace", "RTX (Pratt & Whitney)", "Safran"]},
+            {"name": "Toray Industries",    "ticker": "3402.T",  "sector": "Composite Materials", "country": "Japan",       "role": "Carbon-fibre prepreg",            "supplies": ["Spirit AeroSystems", "Triumph Group"]},
+        ],
+        "tier3": [
+            {"name": "VSMPO-AVISMA",        "ticker": None,      "sector": "Metals & Alloys",     "country": "Russia",      "role": "Titanium sponge / ingot",         "supplies": ["ATI Inc.", "Precision Castparts"]},
+            {"name": "Tronox",              "ticker": "TROX",    "sector": "Mining & Refining",   "country": "USA",         "role": "Titanium feedstock (TiO2)",       "supplies": ["ATI Inc.", "Carpenter Technology"]},
+            {"name": "Mitsubishi Chemical", "ticker": "4188.T",  "sector": "Specialty Chemicals", "country": "Japan",       "role": "PAN precursor (carbon fibre)",    "supplies": ["Toray Industries"]},
+        ],
+        "tier4": [
+            {"name": "Iluka Resources",     "ticker": "ILU.AX",  "sector": "Mining & Refining",   "country": "Australia",   "role": "Mineral sands (titanium/zircon)", "supplies": ["Tronox"]},
+            {"name": "Rio Tinto",           "ticker": "RIO",     "sector": "Mining & Refining",   "country": "UK",          "role": "Titanium dioxide feedstock",      "supplies": ["Tronox", "VSMPO-AVISMA"]},
+        ],
     },
     "Lockheed Martin (LMT)": {
         "ticker": "LMT",
@@ -293,6 +350,22 @@ supply_chains = {
             {"name": "Leidos",              "ticker": "LDOS",      "category": "Subsystems",                "country": "USA",         "role": "Systems integration / IT",               "criticality": 1},
             {"name": "Elbit Systems",       "ticker": "ESLT",      "category": "Electronics & EW",          "country": "Israel",      "role": "Helmet-mounted display (F-35)",          "criticality": 2},
             {"name": "Hexcel",              "ticker": "HXL",       "category": "Materials & Structures",     "country": "USA",         "role": "Composite materials",                    "criticality": 2},
+        ],
+        "tier2": [
+            {"name": "ATI Inc.",            "ticker": "ATI",     "sector": "Metals & Alloys",     "country": "USA",         "role": "Titanium / superalloys",          "supplies": ["RTX (Pratt & Whitney)", "Northrop Grumman", "Howmet Aerospace"]},
+            {"name": "Wolfspeed",           "ticker": "WOLF",    "sector": "Semiconductors",      "country": "USA",         "role": "GaN/SiC for radar & EW",          "supplies": ["Northrop Grumman", "BAE Systems", "L3Harris"]},
+            {"name": "Carpenter Technology","ticker": "CRS",     "sector": "Metals & Alloys",     "country": "USA",         "role": "Specialty alloys",                "supplies": ["RTX (Pratt & Whitney)", "Howmet Aerospace"]},
+            {"name": "Texas Instruments",   "ticker": "TXN",     "sector": "Semiconductors",      "country": "USA",         "role": "Defense-grade analog / MCUs",     "supplies": ["Northrop Grumman", "L3Harris", "Honeywell"]},
+        ],
+        "tier3": [
+            {"name": "VSMPO-AVISMA",        "ticker": None,      "sector": "Metals & Alloys",     "country": "Russia",      "role": "Titanium sponge / ingot",         "supplies": ["ATI Inc.", "Carpenter Technology"]},
+            {"name": "Tronox",              "ticker": "TROX",    "sector": "Mining & Refining",   "country": "USA",         "role": "Titanium feedstock (TiO2)",       "supplies": ["ATI Inc.", "Carpenter Technology"]},
+            {"name": "Coherent",            "ticker": "COHR",    "sector": "Optics & Lasers",     "country": "USA",         "role": "GaN/SiC substrate & photonics",   "supplies": ["Wolfspeed"]},
+            {"name": "MKS Instruments",     "ticker": "MKSI",    "sector": "Semi Equipment",      "country": "USA",         "role": "Process subsystems",              "supplies": ["Wolfspeed", "Texas Instruments"]},
+        ],
+        "tier4": [
+            {"name": "Iluka Resources",     "ticker": "ILU.AX",  "sector": "Mining & Refining",   "country": "Australia",   "role": "Mineral sands (titanium)",        "supplies": ["Tronox"]},
+            {"name": "Linde",               "ticker": "LIN",     "sector": "Industrial Gases",    "country": "Ireland",     "role": "Specialty gases",                 "supplies": ["Coherent", "MKS Instruments"]},
         ],
     },
 }
