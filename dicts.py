@@ -168,3 +168,131 @@ sectors = {
         "utilities-renewable"
         ]
 }
+
+# ── GPW (Warsaw Stock Exchange) — stooq.pl symbols ────────────────────────────
+# Curated, commonly-traded symbols. The stooq.pl quote API accepts the raw
+# symbol (no suffix) for Polish instruments, e.g. "pkn", "wig20".
+# Mapping: stooq symbol → human-readable label shown in the UI.
+gpw_indices = {
+    "wig":     "WIG (broad market)",
+    "wig20":   "WIG20 (blue chips)",
+    "wig30":   "WIG30",
+    "mwig40":  "mWIG40 (mid caps)",
+    "swig80":  "sWIG80 (small caps)",
+    "wig_banki": "WIG-Banki (banks)",
+}
+
+gpw_stocks = {
+    "pkn":  "PKN Orlen",
+    "pko":  "PKO BP",
+    "peo":  "Bank Pekao",
+    "pzu":  "PZU",
+    "kgh":  "KGHM",
+    "dnp":  "Dino Polska",
+    "cdr":  "CD Projekt",
+    "ale":  "Allegro",
+    "lpp":  "LPP",
+    "spl":  "Santander Bank Polska",
+    "mbk":  "mBank",
+    "alr":  "Alior Bank",
+    "opl":  "Orange Polska",
+    "cps":  "Cyfrowy Polsat",
+    "kru":  "Kruk",
+    "ccc":  "CCC",
+    "bdx":  "Budimex",
+    "jsw":  "JSW",
+    "pge":  "PGE",
+    "tpe":  "Tauron",
+    "ena":  "Enea",
+    "kty":  "Grupa Kęty",
+    "att":  "Grupa Azoty",
+    "mil":  "Bank Millennium",
+    "eat":  "AmRest",
+    "11b":  "11 bit studios",
+    "txt":  "Text (LiveChat)",
+    "asb":  "Asbis",
+    "xtb":  "XTB",
+    "gpw":  "GPW (exchange operator)",
+}
+
+# ── SUPPLY CHAINS ─────────────────────────────────────────────────────────────
+# CURATED supplier relationships (NOT a live feed). Sources: company supplier
+# lists, 10-K/annual-report disclosures, and public reporting. Use these as an
+# illustrative map of the most significant suppliers, not an exhaustive BOM.
+# Each supplier: name, ticker (yfinance symbol or None if private/unlisted),
+# category, country, role, and criticality (1=secondary, 2=important, 3=critical).
+# yfinance tickers: foreign listings use Yahoo suffixes
+# (.TW Taiwan, .KS Korea, .T Tokyo, .PA Paris) or US ADRs where available.
+supply_chains = {
+    "Apple (AAPL)": {
+        "ticker": "AAPL",
+        "suppliers": [
+            {"name": "TSMC",                "ticker": "TSM",       "category": "Semiconductors / Foundry", "country": "Taiwan",      "role": "A- and M-series SoC fabrication",        "criticality": 3},
+            {"name": "Samsung Electronics", "ticker": "005930.KS", "category": "Displays & Memory",         "country": "South Korea", "role": "OLED panels, NAND/DRAM",                 "criticality": 3},
+            {"name": "Hon Hai (Foxconn)",   "ticker": "2317.TW",   "category": "Assembly (EMS)",            "country": "Taiwan",      "role": "Final iPhone/iPad assembly",             "criticality": 3},
+            {"name": "Pegatron",            "ticker": "4938.TW",   "category": "Assembly (EMS)",            "country": "Taiwan",      "role": "iPhone assembly",                        "criticality": 2},
+            {"name": "Qualcomm",            "ticker": "QCOM",      "category": "RF & Connectivity",         "country": "USA",         "role": "5G modems",                              "criticality": 3},
+            {"name": "Broadcom",            "ticker": "AVGO",      "category": "RF & Connectivity",         "country": "USA",         "role": "Wireless / RF front-end",                "criticality": 2},
+            {"name": "Skyworks",            "ticker": "SWKS",      "category": "RF & Connectivity",         "country": "USA",         "role": "RF amplifiers",                          "criticality": 2},
+            {"name": "Qorvo",               "ticker": "QRVO",      "category": "RF & Connectivity",         "country": "USA",         "role": "RF front-end modules",                   "criticality": 2},
+            {"name": "Sony",                "ticker": "SONY",      "category": "Sensors & Optics",          "country": "Japan",       "role": "CMOS camera image sensors",              "criticality": 2},
+            {"name": "Corning",             "ticker": "GLW",       "category": "Materials & Glass",         "country": "USA",         "role": "Cover glass (Ceramic Shield)",           "criticality": 2},
+            {"name": "Micron",              "ticker": "MU",        "category": "Displays & Memory",         "country": "USA",         "role": "DRAM / NAND",                            "criticality": 2},
+            {"name": "Cirrus Logic",        "ticker": "CRUS",      "category": "Audio & Analog",            "country": "USA",         "role": "Audio codecs",                           "criticality": 2},
+            {"name": "Texas Instruments",   "ticker": "TXN",       "category": "Audio & Analog",            "country": "USA",         "role": "Analog / power management",              "criticality": 1},
+            {"name": "LG Display",          "ticker": "LPL",       "category": "Displays & Memory",         "country": "South Korea", "role": "OLED panels",                            "criticality": 2},
+        ],
+    },
+    "Tesla (TSLA)": {
+        "ticker": "TSLA",
+        "suppliers": [
+            {"name": "Panasonic",           "ticker": "6752.T",    "category": "Battery Cells",             "country": "Japan",       "role": "2170 cells (Nevada Gigafactory)",        "criticality": 3},
+            {"name": "CATL",                "ticker": "300750.SZ", "category": "Battery Cells",             "country": "China",       "role": "LFP cells (Shanghai)",                   "criticality": 3},
+            {"name": "LG Energy Solution",  "ticker": "373220.KS", "category": "Battery Cells",             "country": "South Korea", "role": "NCM cells",                              "criticality": 2},
+            {"name": "Albemarle",           "ticker": "ALB",       "category": "Raw Materials",             "country": "USA",         "role": "Lithium supply",                         "criticality": 2},
+            {"name": "STMicroelectronics",  "ticker": "STM",       "category": "Power Electronics",         "country": "Switzerland", "role": "SiC inverter MOSFETs",                   "criticality": 3},
+            {"name": "Infineon",            "ticker": "IFNNY",     "category": "Power Electronics",         "country": "Germany",     "role": "Power semiconductors",                   "criticality": 2},
+            {"name": "ON Semiconductor",    "ticker": "ON",        "category": "Power Electronics",         "country": "USA",         "role": "SiC / power devices",                    "criticality": 2},
+            {"name": "NXP Semiconductors",  "ticker": "NXPI",      "category": "Electronics & Compute",     "country": "Netherlands", "role": "Microcontrollers / radar",               "criticality": 2},
+            {"name": "Nvidia",              "ticker": "NVDA",      "category": "Electronics & Compute",     "country": "USA",         "role": "Infotainment / AI compute (legacy)",     "criticality": 1},
+            {"name": "Aptiv",               "ticker": "APTV",      "category": "Components & Wiring",        "country": "Ireland",     "role": "Wiring harnesses / connectors",          "criticality": 2},
+            {"name": "Magna International",  "ticker": "MGA",       "category": "Components & Wiring",        "country": "Canada",      "role": "Body / drivetrain components",           "criticality": 2},
+            {"name": "Glencore",            "ticker": "GLNCY",     "category": "Raw Materials",             "country": "Switzerland", "role": "Cobalt / nickel",                        "criticality": 2},
+            {"name": "Robert Bosch",        "ticker": None,        "category": "Components & Wiring",        "country": "Germany",     "role": "Sensors / braking (private)",            "criticality": 1},
+        ],
+    },
+    "Boeing (BA)": {
+        "ticker": "BA",
+        "suppliers": [
+            {"name": "GE Aerospace",        "ticker": "GE",        "category": "Propulsion / Engines",      "country": "USA",         "role": "Engines (CFM JV, GEnx)",                 "criticality": 3},
+            {"name": "RTX (Pratt & Whitney)","ticker": "RTX",      "category": "Propulsion / Engines",      "country": "USA",         "role": "Engines & Collins avionics",             "criticality": 3},
+            {"name": "Safran",              "ticker": "SAF.PA",    "category": "Propulsion / Engines",      "country": "France",      "role": "CFM engines, landing gear",              "criticality": 3},
+            {"name": "Spirit AeroSystems",  "ticker": "SPR",       "category": "Airframe Structures",       "country": "USA",         "role": "737 fuselages",                          "criticality": 3},
+            {"name": "Rolls-Royce",         "ticker": "RYCEY",     "category": "Propulsion / Engines",      "country": "UK",          "role": "787 Trent 1000 engines",                 "criticality": 2},
+            {"name": "Honeywell",           "ticker": "HON",       "category": "Avionics & Systems",        "country": "USA",         "role": "Avionics, APUs",                         "criticality": 2},
+            {"name": "Howmet Aerospace",    "ticker": "HWM",       "category": "Airframe Structures",       "country": "USA",         "role": "Fasteners / forgings",                   "criticality": 2},
+            {"name": "Hexcel",              "ticker": "HXL",       "category": "Materials & Composites",     "country": "USA",         "role": "Carbon-fibre composites",                "criticality": 2},
+            {"name": "TransDigm",           "ticker": "TDG",       "category": "Components",                "country": "USA",         "role": "Proprietary components",                 "criticality": 2},
+            {"name": "Triumph Group",       "ticker": "TGI",       "category": "Airframe Structures",       "country": "USA",         "role": "Structures / systems",                   "criticality": 1},
+            {"name": "Parker Hannifin",     "ticker": "PH",        "category": "Avionics & Systems",        "country": "USA",         "role": "Hydraulics / fluid systems",             "criticality": 2},
+            {"name": "Moog",                "ticker": "MOG-A",     "category": "Avionics & Systems",        "country": "USA",         "role": "Flight-control actuation",               "criticality": 2},
+            {"name": "L3Harris",            "ticker": "LHX",       "category": "Avionics & Systems",        "country": "USA",         "role": "Avionics / comms",                       "criticality": 1},
+        ],
+    },
+    "Lockheed Martin (LMT)": {
+        "ticker": "LMT",
+        "suppliers": [
+            {"name": "RTX (Pratt & Whitney)","ticker": "RTX",      "category": "Propulsion / Engines",      "country": "USA",         "role": "F135 engine (F-35)",                     "criticality": 3},
+            {"name": "Northrop Grumman",    "ticker": "NOC",       "category": "Airframe & Structures",     "country": "USA",         "role": "F-35 center fuselage, radar",            "criticality": 3},
+            {"name": "BAE Systems",         "ticker": "BAESY",     "category": "Electronics & EW",          "country": "UK",          "role": "F-35 aft fuselage, EW suite",            "criticality": 3},
+            {"name": "L3Harris",            "ticker": "LHX",       "category": "Electronics & EW",          "country": "USA",         "role": "Avionics, comms, propulsion",            "criticality": 2},
+            {"name": "Honeywell",           "ticker": "HON",       "category": "Avionics & Systems",        "country": "USA",         "role": "Power & thermal management",             "criticality": 2},
+            {"name": "Howmet Aerospace",    "ticker": "HWM",       "category": "Materials & Structures",     "country": "USA",         "role": "Titanium forgings / fasteners",          "criticality": 2},
+            {"name": "TransDigm",           "ticker": "TDG",       "category": "Components",                "country": "USA",         "role": "Proprietary components",                 "criticality": 1},
+            {"name": "General Dynamics",    "ticker": "GD",        "category": "Subsystems",                "country": "USA",         "role": "Munitions / land systems",               "criticality": 1},
+            {"name": "Leidos",              "ticker": "LDOS",      "category": "Subsystems",                "country": "USA",         "role": "Systems integration / IT",               "criticality": 1},
+            {"name": "Elbit Systems",       "ticker": "ESLT",      "category": "Electronics & EW",          "country": "Israel",      "role": "Helmet-mounted display (F-35)",          "criticality": 2},
+            {"name": "Hexcel",              "ticker": "HXL",       "category": "Materials & Structures",     "country": "USA",         "role": "Composite materials",                    "criticality": 2},
+        ],
+    },
+}

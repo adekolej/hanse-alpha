@@ -1,5 +1,7 @@
+import io
 import time
 import random
+import urllib.request
 import streamlit as st
 import yfinance as yf
 import pandas as pd
@@ -7,7 +9,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from datetime import datetime
-from dicts import sectors
+from dicts import sectors, gpw_indices, gpw_stocks, supply_chains
 
 st.set_page_config(page_title="Hanse Alpha", layout="wide")
 
@@ -136,6 +138,89 @@ def load_macro():
         "BOGMBASE.csv", parse_dates=["observation_date"], index_col="observation_date"
     )
 
+# ── STOOQ.PL (GPW / Warsaw Stock Exchange) ────────────────────────────────────
+# stooq.pl exposes two relevant CSV endpoints:
+#   • /q/l/  — live multi-symbol quote snapshot (OHLCV + previous close). FREE,
+#              no apikey required. This powers the GPW quotes board.
+#   • /q/d/l/ — daily historical series. Now gated behind an apikey obtained via
+#              captcha at https://stooq.pl/q/d/?s=<sym>&get_apikey . When the user
+#              supplies that key, historical candlestick charts are unlocked.
+_STOOQ_UA = "Mozilla/5.0 (compatible; HanseAlpha/1.0)"
+
+# Field order requested from /q/l/ → maps 1:1 to the columns we rename below.
+_STOOQ_QUOTE_FIELDS = "snd2t2ohlcvp"
+_STOOQ_COL_MAP = {
+    "Symbol": "Symbol", "Nazwa": "Name", "Data": "Date", "Czas": "Time",
+    "Otwarcie": "Open", "Najwyzszy": "High", "Najnizszy": "Low",
+    "Zamkniecie": "Close", "Wolumen": "Volume", "Poprzedni": "PrevClose",
+}
+
+def _http_get(url: str, timeout: float = 15.0) -> str:
+    req = urllib.request.Request(url, headers={"User-Agent": _STOOQ_UA})
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return resp.read().decode("utf-8", errors="replace")
+
+def _stooq_apikey_wall(text: str) -> bool:
+    """stooq returns a plain-text 'get your apikey' notice instead of CSV when
+    the historical endpoint is rate/quota gated."""
+    head = text[:80].lower()
+    return "apikey" in head and ("uzyskaj" in head or "get your" in head)
+
+@st.cache_data(ttl=120)
+def get_stooq_quotes(symbols: tuple[str, ...]) -> pd.DataFrame:
+    """Live snapshot for a set of GPW symbols. Returns a DataFrame indexed by
+    Symbol with numeric OHLCV/PrevClose columns plus a computed Change% (close
+    vs. previous close). Rows that stooq couldn't price are dropped silently."""
+    if not symbols:
+        return pd.DataFrame()
+    sym_q = "+".join(s.strip().lower() for s in symbols if s.strip())
+    url = f"https://stooq.pl/q/l/?s={sym_q}&f={_STOOQ_QUOTE_FIELDS}&h&e=csv"
+
+    def _fetch():
+        text = _http_get(url)
+        df = pd.read_csv(io.StringIO(text))
+        df = df.rename(columns=_STOOQ_COL_MAP)
+        for col in ("Open", "High", "Low", "Close", "Volume", "PrevClose"):
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+        # stooq writes "N/D" for instruments it has no data for → become NaN.
+        df = df.dropna(subset=["Close"])
+        if "PrevClose" in df.columns:
+            df["Change%"] = (df["Close"] - df["PrevClose"]) / df["PrevClose"] * 100
+        return df.set_index("Symbol")
+
+    return _yf_call(_fetch)
+
+@st.cache_data(ttl=300)
+def get_stooq_history(symbol: str, apikey: str) -> pd.DataFrame:
+    """Daily OHLCV history for a single GPW symbol via the apikey-gated endpoint.
+    Returns a DataFrame indexed by tz-naive date with Open/High/Low/Close/Volume.
+    Raises RuntimeError if stooq responds with its apikey wall (bad/expired key
+    or exhausted quota)."""
+    sym = symbol.strip().lower()
+    url = f"https://stooq.pl/q/d/l/?s={sym}&i=d&apikey={apikey.strip()}"
+
+    def _fetch():
+        text = _http_get(url)
+        if _stooq_apikey_wall(text):
+            raise RuntimeError(
+                "stooq rejected the request (invalid/expired apikey or quota "
+                "exhausted). Get a fresh key at stooq.pl …&get_apikey."
+            )
+        df = pd.read_csv(io.StringIO(text))
+        # stooq.pl historical headers: Data,Otwarcie,Najwyzszy,Najnizszy,Zamkniecie,Wolumen
+        df = df.rename(columns=_STOOQ_COL_MAP)
+        if "Date" not in df.columns:
+            raise RuntimeError(f"Unexpected stooq response: {text[:120]!r}")
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+        df = df.dropna(subset=["Date"]).set_index("Date").sort_index()
+        for col in ("Open", "High", "Low", "Close", "Volume"):
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+        return df
+
+    return _yf_call(_fetch)
+
 # ── INDICATOR HELPERS ─────────────────────────────────────────────────────────
 def calc_sma(s, w):
     return s.rolling(w).mean()
@@ -186,7 +271,9 @@ def large(val):
 # ── SIDEBAR ───────────────────────────────────────────────────────────────────
 st.sidebar.title("Hanse Alpha")
 mode = st.sidebar.radio(
-    "Navigation", ["Stocks", "Watchlist", "Sectors"], label_visibility="collapsed"
+    "Navigation",
+    ["Stocks", "Watchlist", "Sectors", "GPW (Stooq)", "Supply Chain"],
+    label_visibility="collapsed",
 )
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -665,3 +752,355 @@ elif mode == "Sectors":
         # key / name / symbol → plain strings
         st.subheader(action.replace("_", " ").title())
         st.write(value)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# GPW (STOOQ) — Warsaw Stock Exchange data via stooq.pl
+# ══════════════════════════════════════════════════════════════════════════════
+elif mode == "GPW (Stooq)":
+    st.title("GPW — Giełda Papierów Wartościowych")
+    st.caption("Source: stooq.pl")
+
+    view = st.sidebar.radio("View", ["Notowania", "Wykres"])
+
+    # ── QUOTES BOARD ──────────────────────────────────────────────────────────
+    if view == "Notowania":
+        group = st.sidebar.radio("Group", ["Indices", "Stocks", "Custom"])
+
+        if group == "Indices":
+            symbols = list(gpw_indices.keys())
+            labels  = gpw_indices
+        elif group == "Stocks":
+            symbols = list(gpw_stocks.keys())
+            labels  = gpw_stocks
+        else:
+            raw = st.sidebar.text_area(
+                "Symbols (one per line or space-separated)",
+                value="pkn pko kgh cdr wig20",
+            )
+            symbols = [s for s in raw.replace("\n", " ").split() if s]
+            labels  = {}
+
+        hcol, rcol = st.columns([5, 1])
+        hcol.subheader(group + " — live quotes")
+        if rcol.button("Refresh Data", key="gpw_refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
+        if not symbols:
+            st.info("Enter at least one stooq symbol (e.g. pkn, wig20).")
+        else:
+            with st.spinner("Loading GPW quotes..."):
+                try:
+                    df = get_stooq_quotes(tuple(symbols))
+                except Exception as e:
+                    df = None
+                    err = e
+
+            if df is None:
+                st.error(f"Could not load quotes from stooq.pl: {err}")
+            elif df.empty:
+                st.warning("No data returned for the requested symbols.")
+            else:
+                disp = pd.DataFrame(index=df.index)
+                disp["Name"]      = [labels.get(s.lower(), df.at[s, "Name"]
+                                     if "Name" in df.columns else s) for s in df.index]
+                disp["Date"]      = df.get("Date")
+                disp["Open"]      = df["Open"].map(lambda v: fmt(v))
+                disp["High"]      = df["High"].map(lambda v: fmt(v))
+                disp["Low"]       = df["Low"].map(lambda v: fmt(v))
+                disp["Close"]     = df["Close"].map(lambda v: fmt(v))
+                if "Change%" in df.columns:
+                    disp["Change %"] = df["Change%"].map(
+                        lambda v: f"{v:+.2f}%" if pd.notna(v) else "N/A"
+                    )
+                disp["Volume"]    = df["Volume"].map(
+                    lambda v: f"{v:,.0f}" if pd.notna(v) else "N/A"
+                )
+                st.dataframe(disp, use_container_width=True)
+                st.caption(
+                    "Change % is the last price vs. previous close. "
+                    "Quotes are delayed per stooq.pl terms."
+                )
+
+    # ── HISTORICAL CHART ──────────────────────────────────────────────────────
+    else:
+        # apikey from st.secrets (preferred) or a sidebar field
+        try:
+            apikey = st.secrets.get("stooq_apikey", "")
+        except Exception:
+            apikey = ""   # no secrets.toml configured
+        if not apikey:
+            apikey = st.sidebar.text_input(
+                "stooq apikey", type="password",
+                help="Historical data needs a stooq apikey. Get one at "
+                     "stooq.pl/q/d/?s=pkn&get_apikey",
+            ).strip()
+
+        sym_default = list(gpw_stocks.keys())[0]
+        symbol = st.sidebar.text_input(
+            "Symbol", value=sym_default, help="stooq symbol, e.g. pkn, kgh, wig20"
+        ).strip().lower()
+
+        indicators = st.sidebar.multiselect(
+            "Overlay Indicators",
+            ["SMA 20", "SMA 50", "SMA 200", "EMA 20", "EMA 50", "Bollinger Bands"],
+            default=["SMA 50"],
+        )
+        show_rsi  = st.sidebar.checkbox("Show RSI (14)")
+        show_macd = st.sidebar.checkbox("Show MACD (12/26/9)")
+
+        label = gpw_stocks.get(symbol) or gpw_indices.get(symbol) or symbol.upper()
+        st.subheader(label)
+
+        if not apikey:
+            st.info(
+                "Historical data from stooq.pl requires an **apikey** (the bulk "
+                "download endpoint is captcha-gated).\n\n"
+                "1. Open https://stooq.pl/q/d/?s=pkn&get_apikey\n"
+                "2. Enter the captcha and copy the apikey from the download link.\n"
+                "3. Paste it in the sidebar (or add `stooq_apikey` to Streamlit secrets).\n\n"
+                "The **Notowania** view works without a key."
+            )
+        elif not symbol:
+            st.info("Enter a stooq symbol in the sidebar.")
+        else:
+            with st.spinner(f"Loading {symbol.upper()} history..."):
+                try:
+                    data = get_stooq_history(symbol, apikey)
+                except Exception as e:
+                    data = None
+                    err = e
+
+            if data is None:
+                st.error(f"Could not load history: {err}")
+            elif data.empty or "Close" not in data.columns:
+                st.warning("No historical data returned for this symbol.")
+            else:
+                close   = data["Close"]
+                n_sub   = 1 + int(show_rsi) + int(show_macd)
+                heights = [0.6] + [0.2] * (n_sub - 1)
+                titles  = [label] + (["RSI"] if show_rsi else []) + (["MACD"] if show_macd else [])
+
+                fig = make_subplots(
+                    rows=n_sub, cols=1, shared_xaxes=True,
+                    row_heights=heights, subplot_titles=titles,
+                    vertical_spacing=0.04,
+                )
+                fig.add_trace(go.Candlestick(
+                    x=data.index, open=data["Open"], high=data["High"],
+                    low=data["Low"], close=close, name="Price",
+                    increasing_line_color="#26a69a", decreasing_line_color="#ef5350",
+                ), row=1, col=1)
+
+                ind_colors = {
+                    "SMA 20": "orange", "SMA 50": "royalblue",
+                    "SMA 200": "mediumpurple", "EMA 20": "cyan", "EMA 50": "magenta",
+                }
+                for ind in indicators:
+                    if ind.startswith("SMA"):
+                        w = int(ind.split()[1])
+                        fig.add_trace(go.Scatter(
+                            x=data.index, y=calc_sma(close, w),
+                            name=ind, line=dict(color=ind_colors[ind], width=1.2),
+                        ), row=1, col=1)
+                    elif ind.startswith("EMA"):
+                        span = int(ind.split()[1])
+                        fig.add_trace(go.Scatter(
+                            x=data.index, y=calc_ema(close, span),
+                            name=ind, line=dict(color=ind_colors[ind], width=1.2),
+                        ), row=1, col=1)
+                    elif ind == "Bollinger Bands":
+                        mid, upper, lower = calc_bollinger(close)
+                        fig.add_trace(go.Scatter(
+                            x=data.index, y=upper, name="BB Upper",
+                            line=dict(color="gray", dash="dash", width=1),
+                        ), row=1, col=1)
+                        fig.add_trace(go.Scatter(
+                            x=data.index, y=lower, name="BB Lower",
+                            line=dict(color="gray", dash="dash", width=1),
+                            fill="tonexty", fillcolor="rgba(128,128,128,0.08)",
+                        ), row=1, col=1)
+                        fig.add_trace(go.Scatter(
+                            x=data.index, y=mid, name="BB Mid",
+                            line=dict(color="gray", width=1),
+                        ), row=1, col=1)
+
+                current_row = 2
+                if show_rsi:
+                    rsi = calc_rsi(close)
+                    fig.add_trace(go.Scatter(
+                        x=data.index, y=rsi, name="RSI",
+                        line=dict(color="orange", width=1.2),
+                    ), row=current_row, col=1)
+                    fig.add_hline(y=70, line_dash="dash", line_color="red",
+                                  annotation_text="70", row=current_row, col=1)
+                    fig.add_hline(y=30, line_dash="dash", line_color="green",
+                                  annotation_text="30", row=current_row, col=1)
+                    current_row += 1
+
+                if show_macd:
+                    macd, signal, hist = calc_macd(close)
+                    bar_colors = ["#26a69a" if v >= 0 else "#ef5350" for v in hist]
+                    fig.add_trace(go.Bar(
+                        x=data.index, y=hist, name="Histogram",
+                        marker_color=bar_colors, opacity=0.6,
+                    ), row=current_row, col=1)
+                    fig.add_trace(go.Scatter(
+                        x=data.index, y=macd, name="MACD",
+                        line=dict(color="royalblue", width=1.2),
+                    ), row=current_row, col=1)
+                    fig.add_trace(go.Scatter(
+                        x=data.index, y=signal, name="Signal",
+                        line=dict(color="orange", width=1.2),
+                    ), row=current_row, col=1)
+
+                fig.update_layout(
+                    height=300 + 180 * n_sub,
+                    xaxis_rangeslider_visible=False,
+                    legend=dict(orientation="h", yanchor="bottom", y=1.01),
+                    margin=dict(l=0, r=0, t=40, b=0),
+                    template="plotly_dark",
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                st.caption("Source: stooq.pl — daily OHLCV")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SUPPLY CHAIN — curated supplier map + live market enrichment
+# ══════════════════════════════════════════════════════════════════════════════
+elif mode == "Supply Chain":
+    st.title("Supply Chain Explorer")
+
+    company = st.sidebar.selectbox("Company", list(supply_chains.keys()))
+    chain      = supply_chains[company]
+    suppliers  = chain["suppliers"]
+    crit_label = {1: "Secondary", 2: "Important", 3: "Critical"}
+    crit_color = {1: "#7e8aa2", 2: "#f0a020", 3: "#ef5350"}
+
+    hcol, rcol = st.columns([5, 1])
+    hcol.subheader(f"{company} — supplier map")
+    if rcol.button("Refresh Data", key="sc_refresh"):
+        st.cache_data.clear()
+        st.rerun()
+
+    show_live = st.sidebar.checkbox("Load live market data", value=True)
+    min_crit  = st.sidebar.select_slider(
+        "Min. criticality", options=[1, 2, 3], value=1,
+        format_func=lambda c: crit_label[c],
+    )
+    suppliers = [s for s in suppliers if s["criticality"] >= min_crit]
+
+    st.caption(
+        "Relationships are **curated** from public supplier lists and filings "
+        "(illustrative, not exhaustive). Market data is live via Yahoo Finance."
+    )
+
+    if not suppliers:
+        st.info("No suppliers match the selected criticality filter.")
+        st.stop()
+
+    # ── SANKEY: Supplier → Category → Company ─────────────────────────────────
+    categories = sorted({s["category"] for s in suppliers})
+    sup_names  = [s["name"] for s in suppliers]
+
+    # Node index layout: suppliers, then categories, then the company.
+    node_labels, node_colors = [], []
+    for s in suppliers:
+        node_labels.append(s["name"])
+        node_colors.append(crit_color[s["criticality"]])
+    cat_base = len(suppliers)
+    for c in categories:
+        node_labels.append(c)
+        node_colors.append("#4a6fa5")
+    company_idx = len(node_labels)
+    node_labels.append(company)
+    node_colors.append("#26a69a")
+
+    cat_idx = {c: cat_base + i for i, c in enumerate(categories)}
+
+    src, tgt, val, link_color = [], [], [], []
+    cat_totals = {c: 0 for c in categories}
+    for i, s in enumerate(suppliers):
+        w = s["criticality"]
+        src.append(i)
+        tgt.append(cat_idx[s["category"]])
+        val.append(w)
+        link_color.append("rgba(240,160,32,0.25)")
+        cat_totals[s["category"]] += w
+    for c in categories:
+        src.append(cat_idx[c])
+        tgt.append(company_idx)
+        val.append(cat_totals[c])
+        link_color.append("rgba(38,166,154,0.25)")
+
+    sankey = go.Figure(go.Sankey(
+        arrangement="snap",
+        node=dict(
+            label=node_labels, color=node_colors,
+            pad=14, thickness=16,
+            line=dict(color="rgba(0,0,0,0)", width=0),
+        ),
+        link=dict(source=src, target=tgt, value=val, color=link_color),
+    ))
+    sankey.update_layout(
+        height=130 + 26 * len(suppliers),
+        margin=dict(l=0, r=0, t=10, b=0),
+        template="plotly_dark",
+        font=dict(size=12),
+    )
+    st.plotly_chart(sankey, use_container_width=True)
+    st.caption("Flow width ∝ supplier criticality. "
+               "Node colour: 🔴 critical · 🟠 important · ⚪ secondary.")
+
+    # ── SUPPLIER TABLE (+ optional live quotes) ───────────────────────────────
+    st.markdown("### Suppliers")
+    rows = []
+    for i, s in enumerate(suppliers):
+        row = {
+            "Supplier":    s["name"],
+            "Ticker":      s["ticker"] or "—",
+            "Category":    s["category"],
+            "Country":     s["country"],
+            "Role":        s["role"],
+            "Criticality": crit_label[s["criticality"]],
+        }
+        if show_live and s["ticker"]:
+            if i > 0:
+                time.sleep(0.2)   # stagger requests (same pattern as Watchlist)
+            try:
+                fi    = get_fast_info(s["ticker"])
+                price = fi.get("last_price")
+                prev  = fi.get("previous_close")
+                chg   = (price - prev) / prev * 100 if price and prev else None
+                ccy   = fi.get("currency", "")
+                row["Price"]      = f"{price:,.2f} {ccy}".strip() if price else "N/A"
+                row["Change (1D)"] = f"{chg:+.2f}%" if chg is not None else "N/A"
+                row["Market Cap"]  = large(fi.get("market_cap")) if fi.get("market_cap") else "N/A"
+            except Exception as exc:
+                label = "rate limited" if _is_rate_limited(exc) else "N/A"
+                row["Price"], row["Change (1D)"], row["Market Cap"] = label, "N/A", "N/A"
+        elif show_live:
+            row["Price"], row["Change (1D)"], row["Market Cap"] = "private", "—", "—"
+        rows.append(row)
+
+    df_sc = pd.DataFrame(rows).set_index("Supplier")
+    st.dataframe(df_sc, use_container_width=True)
+
+    # ── SUMMARY METRICS ───────────────────────────────────────────────────────
+    st.markdown("### Concentration")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Suppliers", len(suppliers))
+    m2.metric("Categories", len(categories))
+    n_critical = sum(1 for s in suppliers if s["criticality"] == 3)
+    m3.metric("Critical (Tier-1)", n_critical)
+    n_countries = len({s["country"] for s in suppliers})
+    m4.metric("Countries", n_countries)
+
+    # Geographic concentration table
+    geo = (
+        pd.Series([s["country"] for s in suppliers])
+        .value_counts()
+        .rename_axis("Country")
+        .to_frame("Suppliers")
+    )
+    st.markdown("**Geographic exposure**")
+    st.dataframe(geo, use_container_width=True)
