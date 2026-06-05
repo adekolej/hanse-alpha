@@ -1101,6 +1101,50 @@ elif mode == "Supply Chain":
 
     categories = sorted({s["category"] for s in suppliers})
 
+    # ── NODE INFO LOOKUP (used for hover tooltips and Node Inspector) ─────────
+    node_info: dict[str, dict] = {
+        company: {
+            "tier": "Company", "ticker": chain.get("ticker", "—"),
+            "country": "—", "role": "Subject company", "extra": "",
+        }
+    }
+    for s in suppliers:
+        node_info[s["name"]] = {
+            "tier": f"Tier-1 · {crit_label[s['criticality']]}",
+            "ticker": s["ticker"] or "private",
+            "country": s["country"],
+            "role": s["role"],
+            "extra": s["category"],
+        }
+    for tlabel, grp in subtiers:
+        for t in grp:
+            node_info[t["name"]] = {
+                "tier": tlabel,
+                "ticker": t["ticker"] or "private",
+                "country": t["country"],
+                "role": t["role"],
+                "extra": t.get("sector", "—"),
+            }
+
+    def _node_cd(name: str) -> list:
+        info = node_info.get(name, {})
+        return [
+            info.get("tier", "—"),
+            info.get("ticker", "—"),
+            info.get("country", "—"),
+            info.get("role", "—"),
+            info.get("extra", ""),
+        ]
+
+    _HOVER_TMPL = (
+        "<b>%{label}</b><br>"
+        "<i style='color:#aaa'>%{customdata[0]}</i><br>"
+        "Ticker: <b>%{customdata[1]}</b>  ·  %{customdata[2]}<br>"
+        "Role: %{customdata[3]}<br>"
+        "<span style='color:#aaa'>%{customdata[4]}</span>"
+        "<extra></extra>"
+    )
+
     if all_sub:
         # ── SANKEY: Tier-4 → Tier-3 → Tier-2 → Tier-1 → Company ───────────────
         # Sub-supplier nodes coloured by SECTOR; Tier-1 by criticality.
@@ -1122,6 +1166,7 @@ elif mode == "Supply Chain":
         company_idx = len(node_labels)
         node_labels.append(company)
         node_colors.append("#26a69a")
+        node_customdata = [_node_cd(n) for n in node_labels]
 
         # each group supplies INTO the next group rightward: T4→T3, T3→T2, T2→T1
         right_maps = [group_idx[1], group_idx[2], t1_idx]
@@ -1165,6 +1210,11 @@ elif mode == "Supply Chain":
         company_idx = len(node_labels)
         node_labels.append(company)
         node_colors.append("#26a69a")
+        # category aggregation nodes get a placeholder tooltip
+        for c in categories:
+            node_info[c] = {"tier": "Category", "ticker": "—", "country": "—",
+                            "role": c, "extra": ""}
+        node_customdata = [_node_cd(n) for n in node_labels]
 
         cat_idx = {c: cat_base + i for i, c in enumerate(categories)}
         src, tgt, val, link_color = [], [], [], []
@@ -1185,6 +1235,8 @@ elif mode == "Supply Chain":
         arrangement="snap",
         node=dict(
             label=node_labels, color=node_colors,
+            customdata=node_customdata,
+            hovertemplate=_HOVER_TMPL,
             pad=12, thickness=15,
             line=dict(color="rgba(0,0,0,0)", width=0),
         ),
@@ -1215,6 +1267,37 @@ elif mode == "Supply Chain":
         except Exception as exc:
             label = "rate limited" if _is_rate_limited(exc) else "N/A"
             return {"Price": label, "Change (1D)": "N/A", "Market Cap": "N/A"}
+
+    # ── NODE INSPECTOR ────────────────────────────────────────────────────────
+    # Hover over any node for a quick tooltip; use the inspector for full details.
+    inspectable = sorted(
+        n for n in node_labels
+        if n != company and n not in categories
+    )
+    with st.expander("Node Inspector — click a name to see company details", expanded=False):
+        sel_node = st.selectbox(
+            "Select node", ["—"] + inspectable, key="sc_node_inspector",
+            label_visibility="collapsed",
+        )
+        if sel_node != "—":
+            info = node_info[sel_node]
+            st.markdown(f"### {sel_node}")
+            d1, d2, d3 = st.columns(3)
+            d1.metric("Tier", info["tier"])
+            d2.metric("Ticker", info["ticker"])
+            d3.metric("Country", info["country"])
+            st.markdown(f"**Role:** {info['role']}")
+            if info["extra"]:
+                label = "Sector" if info["tier"].startswith("Tier-2") or info["tier"].startswith("Tier-3") or info["tier"].startswith("Tier-4") else "Category"
+                st.markdown(f"**{label}:** {info['extra']}")
+            ticker = info["ticker"]
+            if show_live and ticker not in ("—", "private"):
+                with st.spinner(f"Fetching live data for {ticker}…"):
+                    lq = live_cols(ticker)
+                p1, p2, p3 = st.columns(3)
+                p1.metric("Price", lq["Price"])
+                p2.metric("Change (1D)", lq["Change (1D)"])
+                p3.metric("Market Cap", lq["Market Cap"])
 
     # ── TIER-1 SUPPLIER TABLE (+ optional live quotes) ────────────────────────
     st.markdown("### Tier-1 suppliers")
