@@ -45,6 +45,30 @@ Aplikacja ruszy na <http://localhost:8501>.
 
 ---
 
+## Cache danych spółek
+
+Dane spółek są cache'owane dwuwarstwowo, żeby nie pobierać ich z API przy każdym
+załadowaniu:
+
+1. **W pamięci** (`st.cache_data`) — bardzo szybkie, ale znika przy restarcie.
+2. **Na dysku** (`cache.py`, katalog `.cache/`) — **trwałe**, przeżywa restart i
+   redeploy na Streamlit Cloud. Zimny start najpierw sprawdza dysk, zamiast od razu
+   uderzać w API.
+
+Każdy wpis ma znacznik czasu i jest ważny do upływu `ttl`, po czym jest odświeżany.
+Cache czyścisz przyciskiem **Refresh Data** (w danej zakładce) albo
+**Local cache → Clear cached data** w panelu bocznym.
+
+Konfiguracja przez zmienne środowiskowe (opcjonalne):
+
+| Zmienna | Działanie | Domyślnie |
+|---------|-----------|-----------|
+| `HANSE_CACHE_DIR` | katalog cache | `.cache` |
+| `HANSE_CACHE_TTL` | globalne nadpisanie TTL (sekundy, gdy > 0) | brak (TTL per zapytanie) |
+| `HANSE_CACHE_DISABLED` | `1` całkowicie wyłącza cache dyskowy | wyłączone |
+
+---
+
 ## Wdrożenie na Streamlit Community Cloud (darmowe, publiczny link)
 
 To najlepszy sposób, żeby wysłać komuś działający link — apka stoi w chmurze,

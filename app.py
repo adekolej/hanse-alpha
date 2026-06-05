@@ -10,6 +10,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from datetime import datetime
 from dicts import sectors, gpw_indices, gpw_stocks, supply_chains
+import cache as disk_cache
 
 st.set_page_config(page_title="Hanse Alpha", layout="wide")
 
@@ -48,6 +49,38 @@ def _yf_call(fn, retries: int = 3, base_delay: float = 2.0):
                 raise          # non-retryable or last attempt → propagate
     raise last_exc             # should be unreachable, but satisfies type-checkers
 
+# ── CACHING ───────────────────────────────────────────────────────────────────
+# Two-layer cache for company data:
+#   1. st.cache_data → in-memory, per-process, very fast, lost on restart.
+#   2. cache.py      → on-disk, survives restarts / Cloud redeploys.
+# cached_data() stacks both: a cold process first looks on disk before hitting
+# the API, so previously fetched data is reused instead of re-downloaded.
+# The ttl applies to BOTH layers and can be overridden globally via the
+# HANSE_CACHE_TTL env var (see cache.py).
+
+def cached_data(ttl):
+    def decorator(fn):
+        namespace = fn.__name__
+
+        @st.cache_data(ttl=ttl)
+        def wrapper(*args, **kwargs):
+            key = repr((args, tuple(sorted(kwargs.items()))))
+            return disk_cache.cached(namespace, key, ttl, lambda: fn(*args, **kwargs))
+
+        wrapper.__name__ = fn.__name__
+        wrapper.__doc__ = fn.__doc__
+        return wrapper
+
+    return decorator
+
+def clear_all_caches():
+    """Clear both the in-memory and the on-disk cache (used by Refresh buttons)."""
+    st.cache_data.clear()
+    try:
+        disk_cache.clear()
+    except Exception:
+        pass
+
 # ── SESSION STATE ─────────────────────────────────────────────────────────────
 if "watchlist" not in st.session_state:
     st.session_state.watchlist = []
@@ -60,7 +93,7 @@ if "watchlist" not in st.session_state:
 # total number of outbound requests from Streamlit Cloud.
 
 # fast_info → lightweight endpoint, separate from quote-summary.
-@st.cache_data(ttl=300)
+@cached_data(ttl=300)
 def get_fast_info(ticker):
     def _fetch():
         fi = yf.Ticker(ticker).fast_info
@@ -76,12 +109,12 @@ def get_fast_info(ticker):
     return _yf_call(_fetch)
 
 # Full .info — used for Fundamentals; heavier endpoint, more likely throttled.
-@st.cache_data(ttl=600)
+@cached_data(ttl=600)
 def get_info(ticker):
     return _yf_call(lambda: yf.Ticker(ticker).info)
 
 # yf.download() hits Yahoo's chart API — a separate endpoint to quote-summary.
-@st.cache_data(ttl=300)
+@cached_data(ttl=300)
 def get_history(ticker, period):
     def _fetch():
         data = yf.download(ticker, period=period, progress=False, auto_adjust=True)
@@ -94,24 +127,24 @@ def get_history(ticker, period):
         return data
     return _yf_call(_fetch)
 
-@st.cache_data(ttl=600)
+@cached_data(ttl=600)
 def get_news(ticker):
     return _yf_call(lambda: yf.Ticker(ticker).news)
 
 # Calendar, income, price targets change at most once a quarter — cache 1 hour.
-@st.cache_data(ttl=3600)
+@cached_data(ttl=3600)
 def get_calendar(ticker):
     return _yf_call(lambda: yf.Ticker(ticker).calendar)
 
-@st.cache_data(ttl=3600)
+@cached_data(ttl=3600)
 def get_price_targets(ticker):
     return _yf_call(lambda: yf.Ticker(ticker).analyst_price_targets)
 
-@st.cache_data(ttl=3600)
+@cached_data(ttl=3600)
 def get_income_stmt(ticker):
     return _yf_call(lambda: yf.Ticker(ticker).quarterly_income_stmt)
 
-@st.cache_data(ttl=1800)
+@cached_data(ttl=1800)
 def get_sector_data(sector_name, action):
     """Fetch a single sector attribute. Returns a (kind, value) tuple so the
     yfinance.Ticker object case can be flattened to its symbol string before
@@ -166,7 +199,7 @@ def _stooq_apikey_wall(text: str) -> bool:
     head = text[:80].lower()
     return "apikey" in head and ("uzyskaj" in head or "get your" in head)
 
-@st.cache_data(ttl=120)
+@cached_data(ttl=120)
 def get_stooq_quotes(symbols: tuple[str, ...]) -> pd.DataFrame:
     """Live snapshot for a set of GPW symbols. Returns a DataFrame indexed by
     Symbol with numeric OHLCV/PrevClose columns plus a computed Change% (close
@@ -191,7 +224,7 @@ def get_stooq_quotes(symbols: tuple[str, ...]) -> pd.DataFrame:
 
     return _yf_call(_fetch)
 
-@st.cache_data(ttl=300)
+@cached_data(ttl=300)
 def get_stooq_history(symbol: str, apikey: str) -> pd.DataFrame:
     """Daily OHLCV history for a single GPW symbol via the apikey-gated endpoint.
     Returns a DataFrame indexed by tz-naive date with Open/High/Low/Close/Volume.
@@ -298,6 +331,23 @@ mode = st.sidebar.radio(
     label_visibility="collapsed",
 )
 
+# ── CACHE CONTROLS ────────────────────────────────────────────────────────────
+with st.sidebar.expander("Local cache", expanded=False):
+    _cs = disk_cache.stats()
+    st.caption(
+        f"{_cs['files']} entr{'y' if _cs['files'] == 1 else 'ies'} · "
+        f"{_cs['bytes'] / 1024:.0f} KB on disk"
+    )
+    st.caption(
+        "Company data is cached locally and reused until it expires, so it isn't "
+        "re-downloaded on every load or restart."
+    )
+    if st.button("Clear cached data", use_container_width=True):
+        n = disk_cache.clear()
+        st.cache_data.clear()
+        st.success(f"Cleared {n} cached entr{'y' if n == 1 else 'ies'}.")
+        st.rerun()
+
 # ══════════════════════════════════════════════════════════════════════════════
 # STOCKS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -343,7 +393,7 @@ if mode == "Stocks":
         hcol, rcol = st.columns([5, 1])
         hcol.title(name)
         if rcol.button("Refresh Data"):
-            st.cache_data.clear()
+            clear_all_caches()
             st.rerun()
 
         meta_parts = [p for p in [exchange, sector_s, industry] if p]
@@ -727,7 +777,7 @@ elif mode == "Sectors":
     hcol, rcol = st.columns([5, 1])
     hcol.title(sector_name.replace("-", " ").title())
     if rcol.button("Refresh Data", key="sector_refresh"):
-        st.cache_data.clear()
+        clear_all_caches()
         st.rerun()
 
     with st.spinner("Loading..."):
@@ -805,7 +855,7 @@ elif mode == "GPW (Stooq)":
         hcol, rcol = st.columns([5, 1])
         hcol.subheader(group + " — live quotes")
         if rcol.button("Refresh Data", key="gpw_refresh"):
-            st.cache_data.clear()
+            clear_all_caches()
             st.rerun()
 
         if not symbols:
@@ -1001,7 +1051,7 @@ elif mode == "Supply Chain":
     hcol, rcol = st.columns([5, 1])
     hcol.subheader(f"{company} — supplier map")
     if rcol.button("Refresh Data", key="sc_refresh"):
-        st.cache_data.clear()
+        clear_all_caches()
         st.rerun()
 
     show_live = st.sidebar.checkbox("Load live market data", value=True)
