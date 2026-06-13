@@ -368,4 +368,526 @@ supply_chains = {
             {"name": "Linde",               "ticker": "LIN",     "sector": "Industrial Gases",    "country": "Ireland",     "role": "Specialty gases",                 "supplies": ["Coherent", "MKS Instruments"]},
         ],
     },
+    # ── Space / launch sector ────────────────────────────────────────────────
+    # SpaceX (SPCX) IPO'd on Nasdaq 2026-06-12 — the largest IPO ever, priced at
+    # $135. Rocket Lab is public (RKLB); both are heavily vertically integrated
+    # (in-house engines/airframes), so the maps capture the bought-in materials,
+    # avionics silicon and propellants.
+    "SpaceX (SPCX)": {
+        "ticker": "SPCX",
+        "suppliers": [
+            {"name": "Air Products",        "ticker": "APD",       "category": "Propellants & Gases",       "country": "USA",         "role": "Liquid oxygen / industrial gases",       "criticality": 3},
+            {"name": "Linde",               "ticker": "LIN",       "category": "Propellants & Gases",       "country": "Ireland",     "role": "Helium / nitrogen / LOX",                "criticality": 3},
+            {"name": "ATI Inc.",            "ticker": "ATI",       "category": "Materials & Alloys",        "country": "USA",         "role": "Titanium / Inconel for Raptor",          "criticality": 3},
+            {"name": "Carpenter Technology","ticker": "CRS",       "category": "Materials & Alloys",        "country": "USA",         "role": "Specialty superalloys",                  "criticality": 2},
+            {"name": "Hexcel",              "ticker": "HXL",       "category": "Materials & Composites",     "country": "USA",         "role": "Carbon composites (COPVs, fairings)",    "criticality": 2},
+            {"name": "Analog Devices",      "ticker": "ADI",       "category": "Avionics & Compute",        "country": "USA",         "role": "Rad-tolerant data converters / sensors", "criticality": 2},
+            {"name": "Texas Instruments",   "ticker": "TXN",       "category": "Avionics & Compute",        "country": "USA",         "role": "Analog / power management",              "criticality": 2},
+            {"name": "AMETEK",              "ticker": "AME",       "category": "Sensors & Instruments",     "country": "USA",         "role": "Sensors / instrumentation",              "criticality": 1},
+            {"name": "TE Connectivity",     "ticker": "TEL",       "category": "Components & Wiring",        "country": "Switzerland", "role": "Connectors / harnesses",                 "criticality": 2},
+            {"name": "Parker Hannifin",     "ticker": "PH",        "category": "Fluid & Propulsion",        "country": "USA",         "role": "Valves / fluid systems",                 "criticality": 2},
+            {"name": "Moog",                "ticker": "MOG-A",     "category": "Avionics & Actuation",      "country": "USA",         "role": "Thrust-vector actuation",                "criticality": 2},
+            {"name": "Honeywell",           "ticker": "HON",       "category": "Avionics & Systems",        "country": "USA",         "role": "IMUs / inertial avionics",               "criticality": 1},
+        ],
+        "tier2": [
+            {"name": "TSMC",                "ticker": "TSM",     "sector": "Semiconductors",      "country": "Taiwan",      "role": "Avionics / Starlink silicon",     "supplies": ["Analog Devices", "Texas Instruments"]},
+            {"name": "Wolfspeed",           "ticker": "WOLF",    "sector": "Semiconductors",      "country": "USA",         "role": "SiC/GaN power devices",           "supplies": ["Analog Devices", "Texas Instruments"]},
+            {"name": "Toray Industries",    "ticker": "3402.T",  "sector": "Composite Materials", "country": "Japan",       "role": "Carbon-fibre prepreg",            "supplies": ["Hexcel"]},
+            {"name": "Tronox",              "ticker": "TROX",    "sector": "Mining & Refining",   "country": "USA",         "role": "Titanium feedstock (TiO2)",       "supplies": ["ATI Inc.", "Carpenter Technology"]},
+        ],
+        "tier3": [
+            {"name": "MKS Instruments",     "ticker": "MKSI",    "sector": "Semi Equipment",      "country": "USA",         "role": "Process subsystems",              "supplies": ["TSMC", "Wolfspeed"]},
+            {"name": "Coherent",            "ticker": "COHR",    "sector": "Optics & Lasers",     "country": "USA",         "role": "SiC substrate & photonics",       "supplies": ["Wolfspeed"]},
+            {"name": "Mitsubishi Chemical", "ticker": "4188.T",  "sector": "Specialty Chemicals", "country": "Japan",       "role": "PAN precursor (carbon fibre)",    "supplies": ["Toray Industries"]},
+            {"name": "Rio Tinto",           "ticker": "RIO",     "sector": "Mining & Refining",   "country": "UK",          "role": "Titanium dioxide feedstock",      "supplies": ["Tronox"]},
+            {"name": "Iluka Resources",     "ticker": "ILU.AX",  "sector": "Mining & Refining",   "country": "Australia",   "role": "Mineral sands (titanium)",        "supplies": ["Tronox"]},
+        ],
+        "tier4": [
+            {"name": "Air Liquide",         "ticker": "AI.PA",   "sector": "Industrial Gases",    "country": "France",      "role": "Ultra-pure process gases",        "supplies": ["MKS Instruments"]},
+        ],
+    },
+    "Rocket Lab (RKLB)": {
+        "ticker": "RKLB",
+        "suppliers": [
+            {"name": "Hexcel",              "ticker": "HXL",       "category": "Materials & Composites",     "country": "USA",         "role": "Carbon fibre (Electron/Neutron)",        "criticality": 3},
+            {"name": "Toray Industries",    "ticker": "3402.T",    "category": "Materials & Composites",     "country": "Japan",       "role": "Carbon-fibre prepreg",                   "criticality": 3},
+            {"name": "Linde",               "ticker": "LIN",       "category": "Propellants & Gases",       "country": "Ireland",     "role": "Liquid oxygen / gases",                  "criticality": 3},
+            {"name": "Analog Devices",      "ticker": "ADI",       "category": "Avionics & Compute",        "country": "USA",         "role": "Data converters / sensors",              "criticality": 2},
+            {"name": "Texas Instruments",   "ticker": "TXN",       "category": "Avionics & Compute",        "country": "USA",         "role": "Analog / power management",              "criticality": 2},
+            {"name": "Carpenter Technology","ticker": "CRS",       "category": "Materials & Alloys",        "country": "USA",         "role": "Specialty alloys (Rutherford engine)",   "criticality": 2},
+            {"name": "Moog",                "ticker": "MOG-A",     "category": "Avionics & Actuation",      "country": "USA",         "role": "Actuation / control",                    "criticality": 2},
+            {"name": "AMETEK",              "ticker": "AME",       "category": "Sensors & Instruments",     "country": "USA",         "role": "Sensors / instrumentation",              "criticality": 1},
+            {"name": "TE Connectivity",     "ticker": "TEL",       "category": "Components & Wiring",        "country": "Switzerland", "role": "Connectors / harnesses",                 "criticality": 2},
+        ],
+        "tier2": [
+            {"name": "TSMC",                "ticker": "TSM",     "sector": "Semiconductors",      "country": "Taiwan",      "role": "Avionics silicon fabrication",    "supplies": ["Analog Devices", "Texas Instruments"]},
+            {"name": "Wolfspeed",           "ticker": "WOLF",    "sector": "Semiconductors",      "country": "USA",         "role": "SiC/GaN power devices",           "supplies": ["Analog Devices", "Texas Instruments"]},
+            {"name": "Mitsubishi Chemical", "ticker": "4188.T",  "sector": "Specialty Chemicals", "country": "Japan",       "role": "PAN precursor (carbon fibre)",    "supplies": ["Toray Industries", "Hexcel"]},
+            {"name": "Tronox",              "ticker": "TROX",    "sector": "Mining & Refining",   "country": "USA",         "role": "Titanium feedstock (TiO2)",       "supplies": ["Carpenter Technology"]},
+        ],
+        "tier3": [
+            {"name": "MKS Instruments",     "ticker": "MKSI",    "sector": "Semi Equipment",      "country": "USA",         "role": "Process subsystems",              "supplies": ["TSMC", "Wolfspeed"]},
+            {"name": "Rio Tinto",           "ticker": "RIO",     "sector": "Mining & Refining",   "country": "UK",          "role": "Titanium dioxide feedstock",      "supplies": ["Tronox"]},
+            {"name": "Iluka Resources",     "ticker": "ILU.AX",  "sector": "Mining & Refining",   "country": "Australia",   "role": "Mineral sands (titanium)",        "supplies": ["Tronox"]},
+        ],
+    },
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # NASDAQ-100 ("US100") constituents — curated subset with documentable
+    # physical supply chains. Relationships drawn from public supplier lists,
+    # 10-K filings and disclosed manufacturing/foundry partners (illustrative,
+    # esp. for sub-tiers). Apple/Tesla already appear above.
+    # ── Semiconductors & equipment ────────────────────────────────────────────
+    "NVIDIA (NVDA)": {
+        "ticker": "NVDA",
+        "suppliers": [
+            {"name": "TSMC",                "ticker": "TSM",       "category": "Foundry",                   "country": "Taiwan",      "role": "Leading-edge GPU fabrication (Blackwell/Hopper)", "criticality": 3},
+            {"name": "SK Hynix",            "ticker": "000660.KS", "category": "Memory",                    "country": "South Korea", "role": "HBM3/HBM3E stacks",                      "criticality": 3},
+            {"name": "Samsung Electronics", "ticker": "005930.KS", "category": "Memory",                    "country": "South Korea", "role": "HBM / GDDR / DRAM",                      "criticality": 2},
+            {"name": "Micron",              "ticker": "MU",        "category": "Memory",                    "country": "USA",         "role": "HBM3E / GDDR",                           "criticality": 2},
+            {"name": "ASE Technology",      "ticker": "ASX",       "category": "Assembly & Test",           "country": "Taiwan",      "role": "OSAT advanced packaging (CoWoS)",        "criticality": 2},
+            {"name": "Amkor",               "ticker": "AMKR",      "category": "Assembly & Test",           "country": "USA",         "role": "Packaging & test",                       "criticality": 2},
+            {"name": "Hon Hai (Foxconn)",   "ticker": "2317.TW",   "category": "Systems Assembly",          "country": "Taiwan",      "role": "DGX / HGX board & server assembly",      "criticality": 2},
+            {"name": "Synopsys",            "ticker": "SNPS",      "category": "EDA Software",              "country": "USA",         "role": "EDA design tools",                       "criticality": 2},
+            {"name": "Cadence",             "ticker": "CDNS",      "category": "EDA Software",              "country": "USA",         "role": "EDA design tools",                       "criticality": 2},
+            {"name": "Arm Holdings",        "ticker": "ARM",       "category": "IP Licensing",              "country": "UK",          "role": "CPU IP cores (Grace)",                   "criticality": 1},
+            {"name": "Monolithic Power",    "ticker": "MPWR",      "category": "Power Electronics",         "country": "USA",         "role": "Power management for GPUs",              "criticality": 2},
+        ],
+        "tier2": [
+            {"name": "ASML",                "ticker": "ASML",   "sector": "Semi Equipment",      "country": "Netherlands", "role": "EUV/DUV lithography",             "supplies": ["TSMC", "Samsung Electronics"]},
+            {"name": "Applied Materials",   "ticker": "AMAT",   "sector": "Semi Equipment",      "country": "USA",         "role": "Deposition / etch equipment",     "supplies": ["TSMC", "Samsung Electronics", "Micron", "SK Hynix"]},
+            {"name": "Lam Research",        "ticker": "LRCX",   "sector": "Semi Equipment",      "country": "USA",         "role": "Etch / deposition equipment",     "supplies": ["TSMC", "Micron", "SK Hynix"]},
+            {"name": "Shin-Etsu Chemical",  "ticker": "4063.T", "sector": "Electronic Materials","country": "Japan",       "role": "Silicon wafers / photoresist",    "supplies": ["TSMC", "Samsung Electronics"]},
+        ],
+        "tier3": [
+            {"name": "Carl Zeiss SMT",      "ticker": None,     "sector": "Optics & Lasers",     "country": "Germany",     "role": "EUV projection optics",           "supplies": ["ASML"]},
+            {"name": "MKS Instruments",     "ticker": "MKSI",   "sector": "Semi Equipment",      "country": "USA",         "role": "Vacuum / photonics subsystems",   "supplies": ["ASML", "Applied Materials", "Lam Research"]},
+        ],
+        "tier4": [
+            {"name": "Linde",               "ticker": "LIN",    "sector": "Industrial Gases",    "country": "Ireland",     "role": "Specialty / electronic gases",    "supplies": ["MKS Instruments"]},
+        ],
+    },
+    "AMD (AMD)": {
+        "ticker": "AMD",
+        "suppliers": [
+            {"name": "TSMC",                "ticker": "TSM",       "category": "Foundry",                   "country": "Taiwan",      "role": "CPU/GPU/MI300 fabrication",              "criticality": 3},
+            {"name": "SK Hynix",            "ticker": "000660.KS", "category": "Memory",                    "country": "South Korea", "role": "HBM3E for MI300/MI325",                  "criticality": 3},
+            {"name": "Samsung Electronics", "ticker": "005930.KS", "category": "Memory",                    "country": "South Korea", "role": "HBM / DRAM",                             "criticality": 2},
+            {"name": "Micron",              "ticker": "MU",        "category": "Memory",                    "country": "USA",         "role": "HBM / GDDR",                             "criticality": 2},
+            {"name": "GlobalFoundries",     "ticker": "GFS",       "category": "Foundry",                   "country": "USA",         "role": "I/O dies / legacy nodes",                "criticality": 2},
+            {"name": "ASE Technology",      "ticker": "ASX",       "category": "Assembly & Test",           "country": "Taiwan",      "role": "Chiplet packaging / OSAT",               "criticality": 2},
+            {"name": "Amkor",               "ticker": "AMKR",      "category": "Assembly & Test",           "country": "USA",         "role": "Advanced packaging",                     "criticality": 2},
+            {"name": "Synopsys",            "ticker": "SNPS",      "category": "EDA Software",              "country": "USA",         "role": "EDA design tools",                       "criticality": 2},
+            {"name": "Cadence",             "ticker": "CDNS",      "category": "EDA Software",              "country": "USA",         "role": "EDA design tools",                       "criticality": 2},
+            {"name": "Hon Hai (Foxconn)",   "ticker": "2317.TW",   "category": "Systems Assembly",          "country": "Taiwan",      "role": "Server / board assembly",                "criticality": 1},
+        ],
+        "tier2": [
+            {"name": "ASML",                "ticker": "ASML",   "sector": "Semi Equipment",      "country": "Netherlands", "role": "EUV/DUV lithography",             "supplies": ["TSMC", "GlobalFoundries"]},
+            {"name": "Applied Materials",   "ticker": "AMAT",   "sector": "Semi Equipment",      "country": "USA",         "role": "Deposition / etch equipment",     "supplies": ["TSMC", "GlobalFoundries", "Micron"]},
+            {"name": "Lam Research",        "ticker": "LRCX",   "sector": "Semi Equipment",      "country": "USA",         "role": "Etch / deposition equipment",     "supplies": ["TSMC", "Micron", "SK Hynix"]},
+            {"name": "Shin-Etsu Chemical",  "ticker": "4063.T", "sector": "Electronic Materials","country": "Japan",       "role": "Silicon wafers",                  "supplies": ["TSMC", "GlobalFoundries"]},
+        ],
+        "tier3": [
+            {"name": "Carl Zeiss SMT",      "ticker": None,     "sector": "Optics & Lasers",     "country": "Germany",     "role": "EUV projection optics",           "supplies": ["ASML"]},
+            {"name": "MKS Instruments",     "ticker": "MKSI",   "sector": "Semi Equipment",      "country": "USA",         "role": "Vacuum / photonics subsystems",   "supplies": ["ASML", "Applied Materials", "Lam Research"]},
+        ],
+        "tier4": [
+            {"name": "Linde",               "ticker": "LIN",    "sector": "Industrial Gases",    "country": "Ireland",     "role": "Specialty / electronic gases",    "supplies": ["MKS Instruments"]},
+        ],
+    },
+    "Intel (INTC)": {
+        "ticker": "INTC",
+        "suppliers": [
+            {"name": "ASML",                "ticker": "ASML",      "category": "Wafer-Fab Equipment",       "country": "Netherlands", "role": "EUV/High-NA lithography",                "criticality": 3},
+            {"name": "Applied Materials",   "ticker": "AMAT",      "category": "Wafer-Fab Equipment",       "country": "USA",         "role": "Deposition / etch / CMP",                "criticality": 3},
+            {"name": "Lam Research",        "ticker": "LRCX",      "category": "Wafer-Fab Equipment",       "country": "USA",         "role": "Etch / deposition",                      "criticality": 3},
+            {"name": "KLA",                 "ticker": "KLAC",      "category": "Wafer-Fab Equipment",       "country": "USA",         "role": "Process control / metrology",            "criticality": 2},
+            {"name": "Tokyo Electron",      "ticker": "8035.T",    "category": "Wafer-Fab Equipment",       "country": "Japan",       "role": "Coat/develop, etch",                     "criticality": 2},
+            {"name": "TSMC",                "ticker": "TSM",       "category": "Foundry",                   "country": "Taiwan",      "role": "Outsourced compute tiles (Lunar/Arrow Lake)", "criticality": 2},
+            {"name": "Shin-Etsu Chemical",  "ticker": "4063.T",    "category": "Electronic Materials",       "country": "Japan",       "role": "300mm silicon wafers / resist",          "criticality": 2},
+            {"name": "SUMCO",               "ticker": "3436.T",    "category": "Electronic Materials",       "country": "Japan",       "role": "Silicon wafers",                         "criticality": 2},
+            {"name": "Synopsys",            "ticker": "SNPS",      "category": "EDA Software",              "country": "USA",         "role": "EDA design tools",                       "criticality": 2},
+            {"name": "Cadence",             "ticker": "CDNS",      "category": "EDA Software",              "country": "USA",         "role": "EDA design tools",                       "criticality": 2},
+            {"name": "Amkor",               "ticker": "AMKR",      "category": "Assembly & Test",           "country": "USA",         "role": "Outsourced packaging / test",            "criticality": 1},
+        ],
+        "tier2": [
+            {"name": "Carl Zeiss SMT",      "ticker": None,     "sector": "Optics & Lasers",     "country": "Germany",     "role": "EUV/High-NA projection optics",   "supplies": ["ASML"]},
+            {"name": "TRUMPF",              "ticker": None,     "sector": "Optics & Lasers",     "country": "Germany",     "role": "EUV CO2 drive lasers",            "supplies": ["ASML"]},
+            {"name": "MKS Instruments",     "ticker": "MKSI",   "sector": "Semi Equipment",      "country": "USA",         "role": "Vacuum / photonics subsystems",   "supplies": ["ASML", "Applied Materials", "Lam Research"]},
+            {"name": "Entegris",            "ticker": "ENTG",   "sector": "Electronic Materials","country": "USA",         "role": "Filtration / specialty materials","supplies": ["Applied Materials", "Lam Research", "Shin-Etsu Chemical"]},
+        ],
+        "tier3": [
+            {"name": "Linde",               "ticker": "LIN",    "sector": "Industrial Gases",    "country": "Ireland",     "role": "Electronic / specialty gases",    "supplies": ["MKS Instruments", "Entegris"]},
+            {"name": "Air Liquide",         "ticker": "AI.PA",  "sector": "Industrial Gases",    "country": "France",      "role": "Ultra-pure gases",                "supplies": ["MKS Instruments", "Entegris"]},
+        ],
+    },
+    "Broadcom (AVGO)": {
+        "ticker": "AVGO",
+        "suppliers": [
+            {"name": "TSMC",                "ticker": "TSM",       "category": "Foundry",                   "country": "Taiwan",      "role": "Networking / custom ASIC fab",           "criticality": 3},
+            {"name": "ASE Technology",      "ticker": "ASX",       "category": "Assembly & Test",           "country": "Taiwan",      "role": "OSAT packaging",                         "criticality": 2},
+            {"name": "Amkor",               "ticker": "AMKR",      "category": "Assembly & Test",           "country": "USA",         "role": "Packaging & test",                       "criticality": 2},
+            {"name": "Samsung Electronics", "ticker": "005930.KS", "category": "Foundry",                   "country": "South Korea", "role": "Secondary foundry capacity",             "criticality": 1},
+            {"name": "Synopsys",            "ticker": "SNPS",      "category": "EDA Software",              "country": "USA",         "role": "EDA design tools",                       "criticality": 2},
+            {"name": "Cadence",             "ticker": "CDNS",      "category": "EDA Software",              "country": "USA",         "role": "EDA design tools",                       "criticality": 2},
+            {"name": "Arm Holdings",        "ticker": "ARM",       "category": "IP Licensing",              "country": "UK",          "role": "CPU IP cores",                           "criticality": 1},
+        ],
+        "tier2": [
+            {"name": "ASML",                "ticker": "ASML",   "sector": "Semi Equipment",      "country": "Netherlands", "role": "EUV/DUV lithography",             "supplies": ["TSMC", "Samsung Electronics"]},
+            {"name": "Applied Materials",   "ticker": "AMAT",   "sector": "Semi Equipment",      "country": "USA",         "role": "Deposition / etch equipment",     "supplies": ["TSMC", "Samsung Electronics"]},
+            {"name": "Shin-Etsu Chemical",  "ticker": "4063.T", "sector": "Electronic Materials","country": "Japan",       "role": "Silicon wafers",                  "supplies": ["TSMC"]},
+        ],
+    },
+    "Qualcomm (QCOM)": {
+        "ticker": "QCOM",
+        "suppliers": [
+            {"name": "TSMC",                "ticker": "TSM",       "category": "Foundry",                   "country": "Taiwan",      "role": "Snapdragon SoC fabrication",             "criticality": 3},
+            {"name": "Samsung Electronics", "ticker": "005930.KS", "category": "Foundry",                   "country": "South Korea", "role": "Secondary Snapdragon nodes",             "criticality": 2},
+            {"name": "Arm Holdings",        "ticker": "ARM",       "category": "IP Licensing",              "country": "UK",          "role": "CPU/GPU IP cores",                       "criticality": 3},
+            {"name": "Amkor",               "ticker": "AMKR",      "category": "Assembly & Test",           "country": "USA",         "role": "Packaging & test",                       "criticality": 2},
+            {"name": "ASE Technology",      "ticker": "ASX",       "category": "Assembly & Test",           "country": "Taiwan",      "role": "OSAT packaging",                         "criticality": 2},
+            {"name": "Synopsys",            "ticker": "SNPS",      "category": "EDA Software",              "country": "USA",         "role": "EDA design tools",                       "criticality": 2},
+            {"name": "Cadence",             "ticker": "CDNS",      "category": "EDA Software",              "country": "USA",         "role": "EDA design tools",                       "criticality": 2},
+            {"name": "Qorvo",               "ticker": "QRVO",      "category": "RF Components",             "country": "USA",         "role": "RF front-end modules",                   "criticality": 1},
+        ],
+        "tier2": [
+            {"name": "ASML",                "ticker": "ASML",   "sector": "Semi Equipment",      "country": "Netherlands", "role": "EUV/DUV lithography",             "supplies": ["TSMC", "Samsung Electronics"]},
+            {"name": "Applied Materials",   "ticker": "AMAT",   "sector": "Semi Equipment",      "country": "USA",         "role": "Deposition / etch equipment",     "supplies": ["TSMC", "Samsung Electronics"]},
+            {"name": "Shin-Etsu Chemical",  "ticker": "4063.T", "sector": "Electronic Materials","country": "Japan",       "role": "Silicon wafers",                  "supplies": ["TSMC"]},
+        ],
+    },
+    "Micron (MU)": {
+        "ticker": "MU",
+        "suppliers": [
+            {"name": "ASML",                "ticker": "ASML",      "category": "Wafer-Fab Equipment",       "country": "Netherlands", "role": "EUV/DUV lithography",                    "criticality": 3},
+            {"name": "Applied Materials",   "ticker": "AMAT",      "category": "Wafer-Fab Equipment",       "country": "USA",         "role": "Deposition / etch",                      "criticality": 3},
+            {"name": "Lam Research",        "ticker": "LRCX",      "category": "Wafer-Fab Equipment",       "country": "USA",         "role": "Etch / deposition (memory-intensive)",   "criticality": 3},
+            {"name": "Tokyo Electron",      "ticker": "8035.T",    "category": "Wafer-Fab Equipment",       "country": "Japan",       "role": "Coat/develop, etch",                     "criticality": 2},
+            {"name": "KLA",                 "ticker": "KLAC",      "category": "Wafer-Fab Equipment",       "country": "USA",         "role": "Process control / metrology",            "criticality": 2},
+            {"name": "Shin-Etsu Chemical",  "ticker": "4063.T",    "category": "Electronic Materials",       "country": "Japan",       "role": "Silicon wafers / photoresist",           "criticality": 2},
+            {"name": "SUMCO",               "ticker": "3436.T",    "category": "Electronic Materials",       "country": "Japan",       "role": "Silicon wafers",                         "criticality": 2},
+            {"name": "Entegris",            "ticker": "ENTG",      "category": "Electronic Materials",       "country": "USA",         "role": "Filtration / specialty materials",       "criticality": 2},
+            {"name": "Amkor",               "ticker": "AMKR",      "category": "Assembly & Test",           "country": "USA",         "role": "Packaging & test",                       "criticality": 1},
+        ],
+        "tier2": [
+            {"name": "Carl Zeiss SMT",      "ticker": None,     "sector": "Optics & Lasers",     "country": "Germany",     "role": "EUV projection optics",           "supplies": ["ASML"]},
+            {"name": "MKS Instruments",     "ticker": "MKSI",   "sector": "Semi Equipment",      "country": "USA",         "role": "Vacuum / photonics subsystems",   "supplies": ["ASML", "Applied Materials", "Lam Research"]},
+        ],
+        "tier3": [
+            {"name": "Linde",               "ticker": "LIN",    "sector": "Industrial Gases",    "country": "Ireland",     "role": "Electronic / specialty gases",    "supplies": ["MKS Instruments"]},
+            {"name": "Air Liquide",         "ticker": "AI.PA",  "sector": "Industrial Gases",    "country": "France",      "role": "Ultra-pure gases",                "supplies": ["MKS Instruments"]},
+        ],
+    },
+    "Applied Materials (AMAT)": {
+        "ticker": "AMAT",
+        "suppliers": [
+            {"name": "MKS Instruments",     "ticker": "MKSI",      "category": "Subsystems",                "country": "USA",         "role": "Vacuum / RF power / photonics",          "criticality": 3},
+            {"name": "Ultra Clean Holdings","ticker": "UCTT",      "category": "Subsystems",                "country": "USA",         "role": "Gas-delivery subsystems / modules",      "criticality": 3},
+            {"name": "Advanced Energy",     "ticker": "AEIS",      "category": "Power Subsystems",          "country": "USA",         "role": "Plasma / RF power delivery",             "criticality": 2},
+            {"name": "Ichor Holdings",      "ticker": "ICHR",      "category": "Subsystems",                "country": "USA",         "role": "Fluid-delivery subsystems",              "criticality": 2},
+            {"name": "Entegris",            "ticker": "ENTG",      "category": "Materials",                 "country": "USA",         "role": "Filtration / specialty materials",       "criticality": 2},
+            {"name": "Coherent",            "ticker": "COHR",      "category": "Optics & Lasers",           "country": "USA",         "role": "Laser sources / photonics",              "criticality": 1},
+        ],
+        "tier2": [
+            {"name": "Linde",               "ticker": "LIN",    "sector": "Industrial Gases",    "country": "Ireland",     "role": "Specialty gases",                 "supplies": ["MKS Instruments", "Entegris"]},
+            {"name": "Air Liquide",         "ticker": "AI.PA",  "sector": "Industrial Gases",    "country": "France",      "role": "Ultra-pure gases",                "supplies": ["MKS Instruments", "Entegris"]},
+        ],
+    },
+    "Lam Research (LRCX)": {
+        "ticker": "LRCX",
+        "suppliers": [
+            {"name": "MKS Instruments",     "ticker": "MKSI",      "category": "Subsystems",                "country": "USA",         "role": "Vacuum / RF power / photonics",          "criticality": 3},
+            {"name": "Ultra Clean Holdings","ticker": "UCTT",      "category": "Subsystems",                "country": "USA",         "role": "Gas-delivery subsystems / modules",      "criticality": 3},
+            {"name": "Advanced Energy",     "ticker": "AEIS",      "category": "Power Subsystems",          "country": "USA",         "role": "RF / plasma power delivery",             "criticality": 2},
+            {"name": "Ichor Holdings",      "ticker": "ICHR",      "category": "Subsystems",                "country": "USA",         "role": "Fluid-delivery subsystems",              "criticality": 2},
+            {"name": "Entegris",            "ticker": "ENTG",      "category": "Materials",                 "country": "USA",         "role": "Filtration / specialty materials",       "criticality": 2},
+        ],
+        "tier2": [
+            {"name": "Linde",               "ticker": "LIN",    "sector": "Industrial Gases",    "country": "Ireland",     "role": "Specialty gases",                 "supplies": ["MKS Instruments", "Entegris"]},
+            {"name": "Air Liquide",         "ticker": "AI.PA",  "sector": "Industrial Gases",    "country": "France",      "role": "Ultra-pure gases",                "supplies": ["MKS Instruments", "Entegris"]},
+        ],
+    },
+    "KLA (KLAC)": {
+        "ticker": "KLAC",
+        "suppliers": [
+            {"name": "Coherent",            "ticker": "COHR",      "category": "Optics & Lasers",           "country": "USA",         "role": "Laser sources for inspection",           "criticality": 3},
+            {"name": "MKS Instruments",     "ticker": "MKSI",      "category": "Subsystems",                "country": "USA",         "role": "Photonics / motion / vacuum",            "criticality": 2},
+            {"name": "Carl Zeiss SMT",      "ticker": None,        "category": "Optics & Lasers",           "country": "Germany",     "role": "Precision optics",                       "criticality": 2},
+            {"name": "Advanced Energy",     "ticker": "AEIS",      "category": "Power Subsystems",          "country": "USA",         "role": "Precision power",                        "criticality": 1},
+            {"name": "Ichor Holdings",      "ticker": "ICHR",      "category": "Subsystems",                "country": "USA",         "role": "Subsystems / modules",                   "criticality": 1},
+        ],
+        "tier2": [
+            {"name": "Linde",               "ticker": "LIN",    "sector": "Industrial Gases",    "country": "Ireland",     "role": "Specialty gases",                 "supplies": ["MKS Instruments"]},
+        ],
+    },
+    "Analog Devices (ADI)": {
+        "ticker": "ADI",
+        "suppliers": [
+            {"name": "TSMC",                "ticker": "TSM",       "category": "Foundry",                   "country": "Taiwan",      "role": "Mixed-signal fabrication",               "criticality": 2},
+            {"name": "Tower Semiconductor", "ticker": "TSEM",      "category": "Foundry",                   "country": "Israel",      "role": "Analog / specialty foundry",             "criticality": 2},
+            {"name": "GlobalFoundries",     "ticker": "GFS",       "category": "Foundry",                   "country": "USA",         "role": "Specialty nodes",                        "criticality": 2},
+            {"name": "Amkor",               "ticker": "AMKR",      "category": "Assembly & Test",           "country": "USA",         "role": "Packaging & test",                       "criticality": 2},
+            {"name": "ASE Technology",      "ticker": "ASX",       "category": "Assembly & Test",           "country": "Taiwan",      "role": "OSAT packaging",                         "criticality": 2},
+            {"name": "Shin-Etsu Chemical",  "ticker": "4063.T",    "category": "Electronic Materials",       "country": "Japan",       "role": "Silicon wafers",                         "criticality": 2},
+            {"name": "Synopsys",            "ticker": "SNPS",      "category": "EDA Software",              "country": "USA",         "role": "EDA design tools",                       "criticality": 1},
+        ],
+        "tier2": [
+            {"name": "ASML",                "ticker": "ASML",   "sector": "Semi Equipment",      "country": "Netherlands", "role": "Lithography systems",             "supplies": ["TSMC", "GlobalFoundries"]},
+            {"name": "Lam Research",        "ticker": "LRCX",   "sector": "Semi Equipment",      "country": "USA",         "role": "Etch / deposition",               "supplies": ["TSMC", "GlobalFoundries"]},
+        ],
+    },
+    "Texas Instruments (TXN)": {
+        "ticker": "TXN",
+        "suppliers": [
+            {"name": "Applied Materials",   "ticker": "AMAT",      "category": "Wafer-Fab Equipment",       "country": "USA",         "role": "Deposition / etch (300mm)",              "criticality": 3},
+            {"name": "Lam Research",        "ticker": "LRCX",      "category": "Wafer-Fab Equipment",       "country": "USA",         "role": "Etch / deposition",                      "criticality": 2},
+            {"name": "ASML",                "ticker": "ASML",      "category": "Wafer-Fab Equipment",       "country": "Netherlands", "role": "DUV lithography",                        "criticality": 2},
+            {"name": "Tokyo Electron",      "ticker": "8035.T",    "category": "Wafer-Fab Equipment",       "country": "Japan",       "role": "Coat/develop, etch",                     "criticality": 2},
+            {"name": "Shin-Etsu Chemical",  "ticker": "4063.T",    "category": "Electronic Materials",       "country": "Japan",       "role": "300mm silicon wafers",                   "criticality": 2},
+            {"name": "SUMCO",               "ticker": "3436.T",    "category": "Electronic Materials",       "country": "Japan",       "role": "Silicon wafers",                         "criticality": 2},
+            {"name": "Entegris",            "ticker": "ENTG",      "category": "Electronic Materials",       "country": "USA",         "role": "Specialty materials / filtration",       "criticality": 1},
+            {"name": "Amkor",               "ticker": "AMKR",      "category": "Assembly & Test",           "country": "USA",         "role": "Packaging & test",                       "criticality": 1},
+        ],
+        "tier2": [
+            {"name": "MKS Instruments",     "ticker": "MKSI",   "sector": "Semi Equipment",      "country": "USA",         "role": "Vacuum / photonics subsystems",   "supplies": ["Applied Materials", "Lam Research", "ASML"]},
+        ],
+        "tier3": [
+            {"name": "Linde",               "ticker": "LIN",    "sector": "Industrial Gases",    "country": "Ireland",     "role": "Electronic gases",                "supplies": ["MKS Instruments"]},
+        ],
+    },
+    "Microchip (MCHP)": {
+        "ticker": "MCHP",
+        "suppliers": [
+            {"name": "TSMC",                "ticker": "TSM",       "category": "Foundry",                   "country": "Taiwan",      "role": "MCU / mixed-signal fabrication",         "criticality": 2},
+            {"name": "United Microelectronics","ticker": "UMC",    "category": "Foundry",                   "country": "Taiwan",      "role": "Mature-node foundry",                    "criticality": 2},
+            {"name": "Applied Materials",   "ticker": "AMAT",      "category": "Wafer-Fab Equipment",       "country": "USA",         "role": "Deposition / etch (in-house fabs)",      "criticality": 2},
+            {"name": "Amkor",               "ticker": "AMKR",      "category": "Assembly & Test",           "country": "USA",         "role": "Packaging & test",                       "criticality": 2},
+            {"name": "ASE Technology",      "ticker": "ASX",       "category": "Assembly & Test",           "country": "Taiwan",      "role": "OSAT packaging",                         "criticality": 2},
+            {"name": "Shin-Etsu Chemical",  "ticker": "4063.T",    "category": "Electronic Materials",       "country": "Japan",       "role": "Silicon wafers",                         "criticality": 2},
+            {"name": "Synopsys",            "ticker": "SNPS",      "category": "EDA Software",              "country": "USA",         "role": "EDA design tools",                       "criticality": 1},
+        ],
+        "tier2": [
+            {"name": "ASML",                "ticker": "ASML",   "sector": "Semi Equipment",      "country": "Netherlands", "role": "Lithography systems",             "supplies": ["TSMC", "United Microelectronics"]},
+            {"name": "Lam Research",        "ticker": "LRCX",   "sector": "Semi Equipment",      "country": "USA",         "role": "Etch / deposition",               "supplies": ["TSMC", "United Microelectronics"]},
+        ],
+    },
+    # ── Networking hardware ───────────────────────────────────────────────────
+    "Cisco (CSCO)": {
+        "ticker": "CSCO",
+        "suppliers": [
+            {"name": "Broadcom",            "ticker": "AVGO",      "category": "Networking Silicon",        "country": "USA",         "role": "Switching ASICs (Tomahawk/Jericho)",     "criticality": 3},
+            {"name": "Marvell",             "ticker": "MRVL",      "category": "Networking Silicon",        "country": "USA",         "role": "Networking / custom silicon",            "criticality": 2},
+            {"name": "Intel",               "ticker": "INTC",      "category": "Compute Silicon",           "country": "USA",         "role": "CPUs / NICs",                            "criticality": 2},
+            {"name": "Hon Hai (Foxconn)",   "ticker": "2317.TW",   "category": "Manufacturing (EMS)",       "country": "Taiwan",      "role": "Contract manufacturing",                 "criticality": 3},
+            {"name": "Flex",                "ticker": "FLEX",      "category": "Manufacturing (EMS)",       "country": "Singapore",   "role": "Contract manufacturing",                 "criticality": 2},
+            {"name": "Jabil",               "ticker": "JBL",       "category": "Manufacturing (EMS)",       "country": "USA",         "role": "Contract manufacturing",                 "criticality": 2},
+            {"name": "Celestica",           "ticker": "CLS",       "category": "Manufacturing (EMS)",       "country": "Canada",      "role": "Contract manufacturing",                 "criticality": 2},
+            {"name": "Coherent",            "ticker": "COHR",      "category": "Optical Components",         "country": "USA",         "role": "Optical transceivers",                   "criticality": 2},
+            {"name": "Lumentum",            "ticker": "LITE",      "category": "Optical Components",         "country": "USA",         "role": "Lasers / optical components",            "criticality": 2},
+        ],
+        "tier2": [
+            {"name": "TSMC",                "ticker": "TSM",    "sector": "Semiconductors",      "country": "Taiwan",      "role": "Foundry for networking ASICs",    "supplies": ["Broadcom", "Marvell"]},
+        ],
+        "tier3": [
+            {"name": "ASML",                "ticker": "ASML",   "sector": "Semi Equipment",      "country": "Netherlands", "role": "EUV/DUV lithography",             "supplies": ["TSMC"]},
+        ],
+    },
+    "Arista Networks (ANET)": {
+        "ticker": "ANET",
+        "suppliers": [
+            {"name": "Broadcom",            "ticker": "AVGO",      "category": "Networking Silicon",        "country": "USA",         "role": "Merchant switch silicon (Tomahawk/Jericho)", "criticality": 3},
+            {"name": "Marvell",             "ticker": "MRVL",      "category": "Networking Silicon",        "country": "USA",         "role": "Networking silicon",                     "criticality": 2},
+            {"name": "Intel",               "ticker": "INTC",      "category": "Compute Silicon",           "country": "USA",         "role": "Control-plane CPUs",                     "criticality": 2},
+            {"name": "Jabil",               "ticker": "JBL",       "category": "Manufacturing (EMS)",       "country": "USA",         "role": "Contract manufacturing",                 "criticality": 3},
+            {"name": "Hon Hai (Foxconn)",   "ticker": "2317.TW",   "category": "Manufacturing (EMS)",       "country": "Taiwan",      "role": "Contract manufacturing",                 "criticality": 2},
+            {"name": "Celestica",           "ticker": "CLS",       "category": "Manufacturing (EMS)",       "country": "Canada",      "role": "Contract manufacturing",                 "criticality": 2},
+            {"name": "Coherent",            "ticker": "COHR",      "category": "Optical Components",         "country": "USA",         "role": "Optical transceivers",                   "criticality": 2},
+            {"name": "Lumentum",            "ticker": "LITE",      "category": "Optical Components",         "country": "USA",         "role": "Lasers / optical components",            "criticality": 2},
+        ],
+        "tier2": [
+            {"name": "TSMC",                "ticker": "TSM",    "sector": "Semiconductors",      "country": "Taiwan",      "role": "Foundry for networking ASICs",    "supplies": ["Broadcom", "Marvell"]},
+        ],
+    },
+    # ── Big-tech hardware & cloud silicon ─────────────────────────────────────
+    "Microsoft (MSFT)": {
+        "ticker": "MSFT",
+        "suppliers": [
+            {"name": "TSMC",                "ticker": "TSM",       "category": "Cloud & Device Silicon",    "country": "Taiwan",      "role": "Maia/Cobalt custom chips, console SoCs", "criticality": 3},
+            {"name": "AMD",                 "ticker": "AMD",       "category": "Cloud & Device Silicon",    "country": "USA",         "role": "Xbox SoC, Azure CPUs/GPUs",              "criticality": 3},
+            {"name": "NVIDIA",              "ticker": "NVDA",      "category": "Cloud & Device Silicon",    "country": "USA",         "role": "Azure AI GPUs",                          "criticality": 3},
+            {"name": "Intel",               "ticker": "INTC",      "category": "Cloud & Device Silicon",    "country": "USA",         "role": "Surface / Azure CPUs",                   "criticality": 2},
+            {"name": "Hon Hai (Foxconn)",   "ticker": "2317.TW",   "category": "Manufacturing (EMS)",       "country": "Taiwan",      "role": "Surface / Xbox / server assembly",       "criticality": 2},
+            {"name": "Pegatron",            "ticker": "4938.TW",   "category": "Manufacturing (EMS)",       "country": "Taiwan",      "role": "Surface assembly",                       "criticality": 2},
+            {"name": "Quanta Computer",     "ticker": "2382.TW",   "category": "Manufacturing (ODM)",       "country": "Taiwan",      "role": "Azure server ODM",                       "criticality": 2},
+            {"name": "Samsung Electronics", "ticker": "005930.KS", "category": "Components",                "country": "South Korea", "role": "Memory / displays",                      "criticality": 2},
+            {"name": "Micron",              "ticker": "MU",        "category": "Components",                "country": "USA",         "role": "DRAM / NAND",                            "criticality": 2},
+        ],
+        "tier2": [
+            {"name": "ASML",                "ticker": "ASML",   "sector": "Semi Equipment",      "country": "Netherlands", "role": "EUV/DUV lithography",             "supplies": ["TSMC"]},
+            {"name": "Applied Materials",   "ticker": "AMAT",   "sector": "Semi Equipment",      "country": "USA",         "role": "Deposition / etch equipment",     "supplies": ["TSMC", "Micron"]},
+        ],
+    },
+    "Amazon (AMZN)": {
+        "ticker": "AMZN",
+        "suppliers": [
+            {"name": "TSMC",                "ticker": "TSM",       "category": "Cloud Silicon",             "country": "Taiwan",      "role": "Graviton/Trainium/Inferentia fab",       "criticality": 3},
+            {"name": "NVIDIA",              "ticker": "NVDA",      "category": "Cloud Silicon",             "country": "USA",         "role": "AWS AI GPUs",                            "criticality": 3},
+            {"name": "Marvell",             "ticker": "MRVL",      "category": "Cloud Silicon",             "country": "USA",         "role": "Custom-silicon design partner (Trainium)", "criticality": 2},
+            {"name": "Intel",               "ticker": "INTC",      "category": "Cloud Silicon",             "country": "USA",         "role": "AWS Xeon instances",                     "criticality": 2},
+            {"name": "AMD",                 "ticker": "AMD",       "category": "Cloud Silicon",             "country": "USA",         "role": "AWS EPYC instances",                     "criticality": 2},
+            {"name": "Hon Hai (Foxconn)",   "ticker": "2317.TW",   "category": "Manufacturing (EMS)",       "country": "Taiwan",      "role": "Devices / server assembly",              "criticality": 2},
+            {"name": "Quanta Computer",     "ticker": "2382.TW",   "category": "Manufacturing (ODM)",       "country": "Taiwan",      "role": "AWS server ODM",                         "criticality": 2},
+            {"name": "Samsung Electronics", "ticker": "005930.KS", "category": "Components",                "country": "South Korea", "role": "Memory / displays (devices)",            "criticality": 2},
+            {"name": "Micron",              "ticker": "MU",        "category": "Components",                "country": "USA",         "role": "DRAM / NAND",                            "criticality": 1},
+        ],
+        "tier2": [
+            {"name": "ASML",                "ticker": "ASML",   "sector": "Semi Equipment",      "country": "Netherlands", "role": "EUV/DUV lithography",             "supplies": ["TSMC"]},
+            {"name": "Applied Materials",   "ticker": "AMAT",   "sector": "Semi Equipment",      "country": "USA",         "role": "Deposition / etch equipment",     "supplies": ["TSMC"]},
+        ],
+    },
+    "Alphabet (GOOGL)": {
+        "ticker": "GOOGL",
+        "suppliers": [
+            {"name": "TSMC",                "ticker": "TSM",       "category": "Cloud & Device Silicon",    "country": "Taiwan",      "role": "TPU / Tensor fabrication",               "criticality": 3},
+            {"name": "Broadcom",            "ticker": "AVGO",      "category": "Cloud & Device Silicon",    "country": "USA",         "role": "TPU co-design / networking",             "criticality": 3},
+            {"name": "Samsung Electronics", "ticker": "005930.KS", "category": "Components & Foundry",       "country": "South Korea", "role": "Tensor SoC foundry, memory, displays",   "criticality": 3},
+            {"name": "Hon Hai (Foxconn)",   "ticker": "2317.TW",   "category": "Manufacturing (EMS)",       "country": "Taiwan",      "role": "Pixel / server assembly",                "criticality": 2},
+            {"name": "Quanta Computer",     "ticker": "2382.TW",   "category": "Manufacturing (ODM)",       "country": "Taiwan",      "role": "Datacenter server ODM",                  "criticality": 2},
+            {"name": "Sony",                "ticker": "SONY",      "category": "Sensors & Optics",          "country": "Japan",       "role": "Pixel camera image sensors",             "criticality": 2},
+            {"name": "SK Hynix",            "ticker": "000660.KS", "category": "Memory",                    "country": "South Korea", "role": "DRAM / HBM",                             "criticality": 2},
+            {"name": "Micron",              "ticker": "MU",        "category": "Memory",                    "country": "USA",         "role": "DRAM / NAND",                            "criticality": 1},
+        ],
+        "tier2": [
+            {"name": "ASML",                "ticker": "ASML",   "sector": "Semi Equipment",      "country": "Netherlands", "role": "EUV/DUV lithography",             "supplies": ["TSMC", "Samsung Electronics"]},
+            {"name": "Applied Materials",   "ticker": "AMAT",   "sector": "Semi Equipment",      "country": "USA",         "role": "Deposition / etch equipment",     "supplies": ["TSMC", "Samsung Electronics"]},
+        ],
+    },
+    "Meta Platforms (META)": {
+        "ticker": "META",
+        "suppliers": [
+            {"name": "TSMC",                "ticker": "TSM",       "category": "AI & Device Silicon",       "country": "Taiwan",      "role": "MTIA accelerator fabrication",           "criticality": 3},
+            {"name": "NVIDIA",              "ticker": "NVDA",      "category": "AI & Device Silicon",       "country": "USA",         "role": "AI training GPUs",                       "criticality": 3},
+            {"name": "Broadcom",            "ticker": "AVGO",      "category": "AI & Device Silicon",       "country": "USA",         "role": "MTIA co-design / networking",            "criticality": 2},
+            {"name": "Qualcomm",            "ticker": "QCOM",      "category": "AI & Device Silicon",       "country": "USA",         "role": "Quest XR SoC (Snapdragon)",              "criticality": 3},
+            {"name": "Goertek",             "ticker": "002241.SZ", "category": "Manufacturing (EMS)",       "country": "China",       "role": "Quest headset assembly",                 "criticality": 2},
+            {"name": "Pegatron",            "ticker": "4938.TW",   "category": "Manufacturing (EMS)",       "country": "Taiwan",      "role": "Quest / device assembly",                "criticality": 2},
+            {"name": "EssilorLuxottica",    "ticker": "EL.PA",     "category": "Eyewear",                   "country": "France",      "role": "Ray-Ban Meta smart-glass frames",        "criticality": 2},
+            {"name": "Samsung Electronics", "ticker": "005930.KS", "category": "Components",                "country": "South Korea", "role": "Displays / memory",                      "criticality": 2},
+            {"name": "Sony",                "ticker": "SONY",      "category": "Optics & Sensors",          "country": "Japan",       "role": "OLED microdisplays / sensors",           "criticality": 1},
+        ],
+        "tier2": [
+            {"name": "ASML",                "ticker": "ASML",   "sector": "Semi Equipment",      "country": "Netherlands", "role": "EUV/DUV lithography",             "supplies": ["TSMC"]},
+            {"name": "Applied Materials",   "ticker": "AMAT",   "sector": "Semi Equipment",      "country": "USA",         "role": "Deposition / etch equipment",     "supplies": ["TSMC"]},
+        ],
+    },
+    # ── Consumer staples & discretionary ──────────────────────────────────────
+    "PepsiCo (PEP)": {
+        "ticker": "PEP",
+        "suppliers": [
+            {"name": "Archer-Daniels-Midland","ticker": "ADM",     "category": "Ingredients",               "country": "USA",         "role": "Corn sweeteners / oils / grains",        "criticality": 3},
+            {"name": "Ingredion",           "ticker": "INGR",      "category": "Ingredients",               "country": "USA",         "role": "Starches / sweeteners",                  "criticality": 2},
+            {"name": "Bunge Global",        "ticker": "BG",        "category": "Ingredients",               "country": "USA",         "role": "Vegetable oils",                         "criticality": 2},
+            {"name": "Ball Corporation",    "ticker": "BALL",      "category": "Packaging",                 "country": "USA",         "role": "Aluminium beverage cans",                "criticality": 3},
+            {"name": "Crown Holdings",      "ticker": "CCK",       "category": "Packaging",                 "country": "USA",         "role": "Metal cans / ends",                      "criticality": 2},
+            {"name": "Amcor",               "ticker": "AMCR",      "category": "Packaging",                 "country": "Switzerland", "role": "Flexible / rigid plastic packaging",     "criticality": 2},
+            {"name": "International Paper",  "ticker": "IP",        "category": "Packaging",                 "country": "USA",         "role": "Corrugated boxes / board",               "criticality": 1},
+            {"name": "Corteva",             "ticker": "CTVA",      "category": "Agriculture",               "country": "USA",         "role": "Seeds / crop inputs",                    "criticality": 1},
+        ],
+        "tier2": [
+            {"name": "Alcoa",               "ticker": "AA",     "sector": "Metals & Alloys",     "country": "USA",         "role": "Aluminium ingot / sheet",         "supplies": ["Ball Corporation", "Crown Holdings"]},
+        ],
+    },
+    "Mondelez (MDLZ)": {
+        "ticker": "MDLZ",
+        "suppliers": [
+            {"name": "Barry Callebaut",     "ticker": "BARN.SW",   "category": "Ingredients",               "country": "Switzerland", "role": "Cocoa / chocolate",                      "criticality": 3},
+            {"name": "Archer-Daniels-Midland","ticker": "ADM",     "category": "Ingredients",               "country": "USA",         "role": "Cocoa processing / sweeteners",          "criticality": 2},
+            {"name": "Bunge Global",        "ticker": "BG",        "category": "Ingredients",               "country": "USA",         "role": "Vegetable oils / fats",                  "criticality": 2},
+            {"name": "Ingredion",           "ticker": "INGR",      "category": "Ingredients",               "country": "USA",         "role": "Starches / sweeteners",                  "criticality": 1},
+            {"name": "Cargill",             "ticker": None,        "category": "Ingredients",               "country": "USA",         "role": "Cocoa / sweeteners (private)",           "criticality": 2},
+            {"name": "Amcor",               "ticker": "AMCR",      "category": "Packaging",                 "country": "Switzerland", "role": "Flexible packaging",                     "criticality": 2},
+            {"name": "International Paper",  "ticker": "IP",        "category": "Packaging",                 "country": "USA",         "role": "Cartonboard / corrugated",               "criticality": 1},
+        ],
+        "tier2": [
+            {"name": "Olam Group",          "ticker": None,     "sector": "Agriculture",         "country": "Singapore",   "role": "Cocoa bean sourcing / trading",   "supplies": ["Barry Callebaut", "Cargill"]},
+        ],
+    },
+    "Costco (COST)": {
+        "ticker": "COST",
+        "suppliers": [
+            {"name": "Procter & Gamble",    "ticker": "PG",        "category": "Branded Goods",             "country": "USA",         "role": "Household / personal care",              "criticality": 2},
+            {"name": "PepsiCo",             "ticker": "PEP",       "category": "Branded Goods",             "country": "USA",         "role": "Snacks / beverages",                     "criticality": 1},
+            {"name": "Coca-Cola",           "ticker": "KO",        "category": "Branded Goods",             "country": "USA",         "role": "Beverages",                              "criticality": 1},
+            {"name": "Tyson Foods",         "ticker": "TSN",       "category": "Fresh & Protein",           "country": "USA",         "role": "Protein / meat",                         "criticality": 2},
+            {"name": "Kraft Heinz",         "ticker": "KHC",       "category": "Branded Goods",             "country": "USA",         "role": "Packaged foods",                         "criticality": 1},
+            {"name": "Kimberly-Clark",      "ticker": "KMB",       "category": "Branded Goods",             "country": "USA",         "role": "Paper / tissue goods",                   "criticality": 1},
+            {"name": "Maersk",              "ticker": "AMKBY",     "category": "Logistics",                 "country": "Denmark",     "role": "Ocean container freight",                "criticality": 2},
+            {"name": "C.H. Robinson",       "ticker": "CHRW",      "category": "Logistics",                 "country": "USA",         "role": "Freight brokerage",                      "criticality": 1},
+            {"name": "United Parcel Service","ticker": "UPS",      "category": "Logistics",                 "country": "USA",         "role": "Parcel / e-commerce delivery",           "criticality": 1},
+        ],
+    },
+    "Starbucks (SBUX)": {
+        "ticker": "SBUX",
+        "suppliers": [
+            {"name": "Olam Group",          "ticker": None,        "category": "Green Coffee",              "country": "Singapore",   "role": "Green-coffee sourcing / trading",        "criticality": 3},
+            {"name": "Nestlé",              "ticker": "NSRGY",     "category": "Distribution",              "country": "Switzerland", "role": "Global Coffee Alliance (packaged)",      "criticality": 1},
+            {"name": "PepsiCo",             "ticker": "PEP",       "category": "Distribution",              "country": "USA",         "role": "NA Coffee Partnership (RTD)",            "criticality": 1},
+            {"name": "Ball Corporation",    "ticker": "BALL",      "category": "Packaging",                 "country": "USA",         "role": "RTD beverage cans",                      "criticality": 1},
+            {"name": "WestRock (Smurfit)",  "ticker": "SW",        "category": "Packaging",                 "country": "Ireland",     "role": "Cups / paperboard",                      "criticality": 2},
+            {"name": "International Paper",  "ticker": "IP",        "category": "Packaging",                 "country": "USA",         "role": "Cups / fibre board",                     "criticality": 2},
+            {"name": "Amcor",               "ticker": "AMCR",      "category": "Packaging",                 "country": "Switzerland", "role": "Flexible packaging",                     "criticality": 1},
+        ],
+    },
+    "Lululemon (LULU)": {
+        "ticker": "LULU",
+        "suppliers": [
+            {"name": "Eclat Textile",       "ticker": "1476.TW",   "category": "Garment Manufacturing",     "country": "Taiwan",      "role": "Performance fabric / garments",          "criticality": 3},
+            {"name": "Makalot Industrial",  "ticker": "1477.TW",   "category": "Garment Manufacturing",     "country": "Taiwan",      "role": "Garment manufacturing",                  "criticality": 2},
+            {"name": "Shenzhou International","ticker": "2313.HK",  "category": "Garment Manufacturing",     "country": "China",       "role": "Vertically-integrated knit garments",    "criticality": 2},
+            {"name": "Nan Ya Plastics",     "ticker": "1303.TW",   "category": "Materials & Fibre",         "country": "Taiwan",      "role": "Nylon / polyester fibre",                "criticality": 2},
+            {"name": "Toray Industries",    "ticker": "3402.T",    "category": "Materials & Fibre",         "country": "Japan",       "role": "Synthetic performance fibres",           "criticality": 2},
+            {"name": "Far Eastern New Century","ticker": "1402.TW", "category": "Materials & Fibre",        "country": "Taiwan",      "role": "Polyester / recycled PET",               "criticality": 1},
+            {"name": "Asahi Kasei",         "ticker": "3407.T",    "category": "Materials & Fibre",         "country": "Japan",       "role": "Elastane (Roica)",                       "criticality": 1},
+        ],
+        "tier2": [
+            {"name": "Mitsubishi Chemical", "ticker": "4188.T", "sector": "Specialty Chemicals", "country": "Japan",       "role": "Precursor resins / chemicals",    "supplies": ["Toray Industries", "Asahi Kasei"]},
+        ],
+    },
+    "Keurig Dr Pepper (KDP)": {
+        "ticker": "KDP",
+        "suppliers": [
+            {"name": "Archer-Daniels-Midland","ticker": "ADM",     "category": "Ingredients",               "country": "USA",         "role": "Sweeteners / concentrates",              "criticality": 2},
+            {"name": "Ingredion",           "ticker": "INGR",      "category": "Ingredients",               "country": "USA",         "role": "Starches / sweeteners",                  "criticality": 1},
+            {"name": "Olam Group",          "ticker": None,        "category": "Ingredients",               "country": "Singapore",   "role": "Green coffee (K-Cups)",                  "criticality": 2},
+            {"name": "Ball Corporation",    "ticker": "BALL",      "category": "Packaging",                 "country": "USA",         "role": "Aluminium cans",                         "criticality": 3},
+            {"name": "Crown Holdings",      "ticker": "CCK",       "category": "Packaging",                 "country": "USA",         "role": "Metal cans / ends",                      "criticality": 2},
+            {"name": "Berry Global",        "ticker": "BERY",      "category": "Packaging",                 "country": "USA",         "role": "Plastic bottles / K-Cup pods",           "criticality": 2},
+            {"name": "Amcor",               "ticker": "AMCR",      "category": "Packaging",                 "country": "Switzerland", "role": "Rigid / flexible packaging",             "criticality": 2},
+            {"name": "International Paper",  "ticker": "IP",        "category": "Packaging",                 "country": "USA",         "role": "Corrugated / cartons",                   "criticality": 1},
+        ],
+        "tier2": [
+            {"name": "Alcoa",               "ticker": "AA",     "sector": "Metals & Alloys",     "country": "USA",         "role": "Aluminium ingot / sheet",         "supplies": ["Ball Corporation", "Crown Holdings"]},
+        ],
+    },
+    # ── Diversified industrial ────────────────────────────────────────────────
+    "Honeywell (HON)": {
+        "ticker": "HON",
+        "suppliers": [
+            {"name": "ATI Inc.",            "ticker": "ATI",       "category": "Metals & Alloys",           "country": "USA",         "role": "Superalloys / titanium",                 "criticality": 2},
+            {"name": "Carpenter Technology","ticker": "CRS",       "category": "Metals & Alloys",           "country": "USA",         "role": "Specialty alloys",                       "criticality": 2},
+            {"name": "Howmet Aerospace",    "ticker": "HWM",       "category": "Aerospace Components",       "country": "USA",         "role": "Forgings / castings",                    "criticality": 2},
+            {"name": "Texas Instruments",   "ticker": "TXN",       "category": "Electronics",               "country": "USA",         "role": "Analog / MCUs",                          "criticality": 2},
+            {"name": "Analog Devices",      "ticker": "ADI",       "category": "Electronics",               "country": "USA",         "role": "Sensors / data converters",              "criticality": 1},
+            {"name": "STMicroelectronics",  "ticker": "STM",       "category": "Electronics",               "country": "Switzerland", "role": "Microcontrollers / sensors",             "criticality": 1},
+            {"name": "Hexcel",              "ticker": "HXL",       "category": "Materials & Composites",     "country": "USA",         "role": "Carbon-fibre composites",                "criticality": 1},
+            {"name": "Celanese",            "ticker": "CE",        "category": "Specialty Chemicals",       "country": "USA",         "role": "Engineered polymers",                    "criticality": 1},
+        ],
+        "tier2": [
+            {"name": "VSMPO-AVISMA",        "ticker": None,     "sector": "Metals & Alloys",     "country": "Russia",      "role": "Titanium sponge / ingot",         "supplies": ["ATI Inc.", "Carpenter Technology", "Howmet Aerospace"]},
+            {"name": "Tronox",              "ticker": "TROX",   "sector": "Mining & Refining",   "country": "USA",         "role": "Titanium feedstock (TiO2)",       "supplies": ["ATI Inc.", "Carpenter Technology"]},
+        ],
+        "tier3": [
+            {"name": "Rio Tinto",           "ticker": "RIO",    "sector": "Mining & Refining",   "country": "UK",          "role": "Titanium dioxide feedstock",      "supplies": ["Tronox"]},
+        ],
+    },
 }

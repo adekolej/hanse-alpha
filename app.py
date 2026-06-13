@@ -315,6 +315,7 @@ SECTOR_COLORS = {
     "Optics & Lasers":      "#ff99c3",
     "Composite Materials":  "#9270ca",
     "Aerospace Components": "#a0d911",
+    "Agriculture":          "#7cb305",
 }
 _SECTOR_FALLBACK = "#888888"
 
@@ -1104,7 +1105,7 @@ elif mode == "Supply Chain":
     # ── NODE INFO LOOKUP (used for hover tooltips and Node Inspector) ─────────
     node_info: dict[str, dict] = {
         company: {
-            "tier": "Company", "ticker": chain.get("ticker", "—"),
+            "tier": "Company", "ticker": chain.get("ticker") or "—",
             "country": "—", "role": "Subject company", "extra": "",
         }
     }
